@@ -1,5 +1,5 @@
 name: salts-secrets
-version: "0.4.2"
+version: "0.4.3"
 requires_hermes: ">=0.23.0"
 description: >-
   Let strangers talk to your Hermes without reaching your private memory. Only your own DM reaches
@@ -11,6 +11,8 @@ provides_hooks:
   - pre_gateway_dispatch
   - pre_tool_call
   - post_tool_call
+  - pre_llm_call
+  - transform_llm_output
 provides_tools:
   - public_notes_lookup
   - salt_propose_public

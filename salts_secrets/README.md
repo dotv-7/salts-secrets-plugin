@@ -76,7 +76,7 @@ MEMORY.md and USER.md are still in that profile's system prompt, so a guest who 
 refused by the model's discretion. Salt's Secrets moves guests to a profile that never loaded that context.
 The two compose: Clearance for who may use which tool, Salt's Secrets for what a stranger can know.
 
-![Two profiles in one Hermes: the route hook sends your DM to your agent and everyone else to the guest agent, which only reads what you approved](../docs/diagrams/overview.svg)
+![Two profiles in one Hermes: Hermes' own profile_routes send your DM to your agent and every stranger to the guest agent, which only reads what you approved; the owner hook catches what the routes leave behind](../docs/diagrams/overview.svg)
 
 ## 30-second tour
 
@@ -170,19 +170,27 @@ whatever the config says. No allowed tool takes a local path: any argument that 
 `public_notes_lookup`. Both read one file, the projection in the public profile's plugin data, and never
 open anything in your profile.
 
+**Public profile, at the end of the turn** (`pre_llm_call`, `transform_llm_output`). A reply whose turn
+started before the owner's last revocation is replaced by a short "ask again" notice before it is stored,
+and before it is sent where the reply is not streamed. Text a platform already streamed cannot be taken
+back; it still never enters the transcript.
+
 **Dashboard** (owner only, behind the dashboard login).
 
 - *Context*: every source Hermes builds your prompt from (memory, user profile, SOUL.md, workspace,
   skills, sessions, cron, providers), private by default. Tick an item to publish it, optionally with
   a rewritten guest version. An approved item that you later edit drops out of the projection until you
-  approve it again. Unticking revokes: guest sessions that may have seen the item are archived for you
-  and deleted from the public store, whether you publish from the dashboard or with
-  `hermes salts-secrets sync` (both go through `context.publish`). A session that cannot be deleted is marked stale: its guest is moved to a fresh session at once on both ingress paths (the native route resets the gateway's session for that chat before the turn, and refuses the turn with a "send it again" notice when it cannot), the publish result says the revoke is incomplete, and `check` fails until a later publish deletes it. A guest version replaces the title as well, so a file name or heading never crosses with a rewrite.
+  approve it again. Unticking revokes: every guest session in the public store is archived for you and
+  deleted (all of them, since the store does not record which session saw which item), whether you publish
+  from the dashboard or with `hermes salts-secrets sync` (both go through `context.publish`). Every session
+  is marked stale before the first delete and unmarked when its delete succeeds, so a session left behind by a
+  failed delete, a timeout or a crash halfway stays stale: its guest is moved to a fresh session at once on both ingress paths (the native route resets the gateway's session for that chat before the turn, and refuses the turn with a "send it again" notice when it cannot), the publish result says the revoke is incomplete (`sync` exits 1), and `check` fails until a later publish deletes it. A guest version replaces the title as well, so a file name or heading never crosses with a rewrite.
 - *Triage* (on the Context tab): rules first, then your model, sort every publishable item into
   **A** publish as-is, **B** needs a guest rewrite, **C** never public. The rules
   ([`privacy_rules.yaml`](privacy_rules.yaml): credentials, identity and contact, assets,
   health and family, file origin, dates, plus a cross-item combination rule) set a floor the model can
-  only raise; an item is A only if no rule hits and the model says A. One button per tier (adopt all A
+  only raise; an item is A only if no rule hits and the model says A. Opening the tab applies the rules
+  only; item text goes to your model when you click Classify (items changed since the last run) or Draft. One button per tier (adopt all A
   as-is, draft guest versions for all B, keep all C private); a bulk click only takes items of its own
   tier and C never crosses in bulk. A single click may override the classifier, with one exception: text the
   author marked "do not publish" (`hard: true` rules) is refused on any click and kept out of the projection even
@@ -210,7 +218,7 @@ starts with `salt-v-`; the demo chat uses those ids for its read-only owner pass
 
 What happens to one stranger's question:
 
-![A stranger's message goes through the route hook to the guest agent and its tool gate; the route hook returns skip, so your agent never sees it](../docs/diagrams/question.svg)
+![A stranger's message is routed by profile_routes straight to the public profile: guest hook, guest agent, tool gate, reply check; your agent never sees it](../docs/diagrams/question.svg)
 
 The diagrams are PlantUML with the handwritten skin; sources in [`docs/diagrams/`](../docs/diagrams/)
 (`java -jar plantuml.jar -tsvg docs/diagrams/*.puml`).
@@ -236,12 +244,13 @@ Under `plugins.entries.salts-secrets.settings` in your profile's config.yaml:
   `setup` creates it with `hermes config set`; the plugin never opens `.env` or `auth.json` itself.
   `check` compares the owner's copy with the public profile's `API_SERVER_KEY` through Hermes'
   profile secret scope.
-- **Network.** The owner side calls only the local API server (`127.0.0.1:8642` by default).
-  Nothing leaves the machine except what Hermes itself sends to your model provider.
+- **Network.** The owner side calls only the local API server (`127.0.0.1:8642` by default) and, when
+  you click Classify or Draft, your own configured model with the item text.
+  Nothing else leaves the machine except what Hermes itself sends to your model provider.
 - **Files written.** `<HERMES_HOME>/plugin-data/salts-secrets/` in both profiles (allowlist, projection,
   tool tiers, guest archive and digest, the public profile's empty cwd), and the public profile's
   config.yaml and SOUL.md during `setup`.
-- **Processes.** Revoking context runs `hermes sessions delete` for the affected guest sessions.
+- **Processes.** Revoking context runs `hermes sessions delete` for every guest session in the public profile.
 - No self-update, no patching of Hermes, no code downloaded at runtime.
 
 ## Isolation matrix
@@ -269,7 +278,8 @@ On every row that ends in the public profile, each probe below is refused:
 | unpublished items | absent from the prompt section and from `public_notes_lookup`, and from every file in the public profile |
 
 Revocation is covered by `test_cli_sync_revocation_empties_public_store`. Unticking an item and running
-`sync` deletes the guest sessions from the public `state.db`.
+`sync` deletes the guest sessions from the public `state.db`. `test_revoke_hardening.py` covers 501 sessions,
+a delete that times out, a crash halfway, `sync` exiting 1, and a reply written across a revoke.
 
 The full chain is covered by [`demo/e2e/canary_matrix.py`](../demo/e2e/canary_matrix.py), with results in
 [`docs/isolation-report.md`](../docs/isolation-report.md). It runs one real `hermes gateway run`, set up by
@@ -277,32 +287,35 @@ The full chain is covered by [`demo/e2e/canary_matrix.py`](../demo/e2e/canary_ma
 APIs, the web ingress, and a fake model that records every request body, auxiliary calls included. Fresh
 canaries go into MEMORY.md, USER.md, the workspace, a private folder, a skill and an owner session, and only
 a small subset is approved. On every guest row, no unapproved canary appears in any request the gateway sent
-to the model, and no owner tool is offered. The first run found that the Discord adapter checks
+to the model, and no owner tool is offered. Two stranger DMs paste a long note and write past a lowered
+compaction limit, so the gateway compacts their history with the auxiliary model; those rows pass only if
+the summary reaches a later request, and the summary request is scanned like the rest. The first run found that the Discord adapter checks
 `DISCORD_ALLOWED_USERS` before any route and ignores `DISCORD_ALLOW_ALL_USERS` while that list names anyone.
 Strangers never reached the catch-all, so `setup` now adds `*` to that list, and `check` flags a list without it.
 
 ## Evidence
 
 One useful task under three setups, produced by [`demo/e2e/controls.py`](../demo/e2e/controls.py) at commit
-`4b1ed040ba` (full output in [`docs/controls-report.md`](../docs/controls-report.md)). A stranger on Telegram
+`ad49db514e` (full output in [`docs/controls-report.md`](../docs/controls-report.md)). A stranger on Telegram
 asks how Salt checks a bridge, which is answerable from her published method. The same stranger then probes for her
 private data, the owner takes the method back, and the stranger writes once more. Each setup runs on a real
 gateway with the real Telegram adapter, against a loopback API stand-in and a fake model that records every request.
 
-| | One profile + tool allowlist + never-share prompt | Native two profiles, method copied by hand | Salt's Secrets (setup, approve, sync, revoke) |
+| | One profile + tool allowlist + never-share prompt | Native two profiles by hand, tools narrowed | Salt's Secrets (setup, approve, sync, revoke) |
 |---|---|---|---|
 | Task material reached the model | yes | yes | yes |
-| Private canaries in the stranger's model requests | memory, user | memory, private, skill, user, workspace | none |
-| Owner tools that ran for the stranger | none | read_file, search_files | none |
+| Private canaries in the stranger's model requests | memory, user | none | none |
+| Owner tools that ran for the stranger | none | none | none |
 | Method still in requests after revoke | yes | yes | no |
-| Model requests (mean body size) | 10 (12,212 chars) | 10 (49,136 chars) | 9 (11,934 chars) |
-| Gateway latency per turn, median | 1.00 s | 1.00 s | 1.00 s |
+| Model requests (mean body size) | 10 (12,212 chars) | 10 (13,254 chars) | 9 (11,934 chars) |
+| Gateway latency per turn, median | 1.01 s | 1.01 s | 0.95 s |
 | Failures | none | none | none |
-| Owner's steps | 4 | 6 | 2 |
+| Owner's steps | 4 | 9 | 2 |
 
 With tools denied, setup A still sends the owner's memory to the model on a stranger's behalf, because MEMORY.md
-and USER.md are in the prompt. Setup B keeps the prompt clean, but a hand-made profile keeps its file tools, so
-`read_file` and `search_files` reach the owner's home. In both, the method stays in the stranger's session after it
+and USER.md are in the prompt. Setup B is a careful owner's hand-made public profile: tools cut to web + clarify,
+an empty cwd, only the model key copied, a never-share SOUL.md. It keeps private data out, at nine setup
+steps, and every later publish is a hand copy. What neither A nor B can do is take something back: the method stays in the stranger's session after it
 is deleted. The model is scripted: latency is gateway overhead, and cost is shown as request size.
 
 ## Limits
@@ -326,8 +339,10 @@ is deleted. The model is scripted: latency is gateway overhead, and cost is show
   The web chat forgets on every page load.
 - **The second-line path is text only**: your own Discord server messages and guests on unrouted
   platforms are forwarded as text to the local API and get one reply, without streaming or media.
-- **Revocation is not atomic for a request already running**: revocation purges stored guest sessions;
-  text already sent to the model provider or already delivered cannot be recalled.
+- **Revocation is not atomic for a request already running**: a reply whose turn started before the
+  revoke is replaced with a "please ask again" notice before it is stored or sent (the public side's
+  `transform_llm_output`), but text already sent to the model provider, or already streamed to the chat,
+  cannot be recalled.
 - **External memory provider contents are not listed** on the Context tab. The tab shows whether your
   profile uses one; the public side configures none (a `check` condition), so nothing from it reaches guests.
 - **Inference across facts** is only partly covered: the combination rule flags a batch that publishes two

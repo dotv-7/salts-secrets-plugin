@@ -451,13 +451,15 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     @app.post("/api/board/classify")
     async def board_classify(request: Request):
-        """Rules + the owner's model sort every publishable item into A/B/C. Nothing is published here."""
+        """Rules + the owner's model sort every publishable item into A/B/C. Nothing is published here.
+        ``rules_only`` (the shelf opening) sends nothing to the model; only the Classify button does."""
         require_json(request)
         st = require_reader(request)
-        force = bool((await request.json()).get("force"))
+        body = await request.json()
+        force = bool(body.get("force"))
         if force and not is_owner(st):
             raise HTTPException(403, "read-only mode")
-        ask = classify.openai_asker(classify.model_settings(s.owner_home))
+        ask = None if body.get("rules_only") else classify.openai_asker(classify.model_settings(s.owner_home))
         return await classify.classify(s.owner_home, board_scan(), ask, force)
 
     @app.get("/api/board/guests")

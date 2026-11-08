@@ -31,6 +31,10 @@ log = logging.getLogger(__name__)
 NOTICE_UNAVAILABLE = "The guest entrance is temporarily unavailable. Please try again in a minute."
 NOTICE_RATE = "You have reached the guest message limit for this hour. Please come back later."
 NOTICE_TEXT_ONLY = "I can only read text here."
+NOTICE_REVOKED_MID_TURN = (
+    "The owner withdrew something while this reply was being written, so it was not sent. "
+    "Please ask again."
+)
 NOTICE_REVOKE_PENDING = (
     "The owner withdrew something this conversation used and the cleanup is not finished. "
     "Please send your message again in a minute."
@@ -231,9 +235,35 @@ def make_guest_hook(limiter: RateLimiter):
     return hook
 
 
+class InFlightRevoke:
+    """A reply whose turn started before the owner revoked something is replaced by a notice.
+
+    ``pre_llm_call`` notes when each guest turn started; ``transform_llm_output`` runs before the reply is
+    stored or (for non-streamed replies) delivered, and compares that with the public profile's last
+    revocation. Text a platform already streamed cannot be taken back; it is still kept out of the transcript."""
+
+    def __init__(self, revoked_at: Callable[[], float] = lambda: 0.0, clock: Callable[[], float] = time.time):
+        self.revoked_at, self.clock = revoked_at, clock
+        self.started: dict[str, float] = {}
+
+    def on_turn_start(self, session_id: str = "", **_: Any) -> None:
+        self.started[str(session_id or "")] = self.clock()
+
+    def on_reply(self, session_id: str = "", **_: Any) -> Optional[str]:
+        started = self.started.pop(str(session_id or ""), None)
+        if started is None:
+            return None
+        return NOTICE_REVOKED_MID_TURN if self.revoked_at() >= started else None
+
+
 def register_guest(ctx) -> None:
+    from . import guests
+
     rate = max(1, int(ctx.get_config("guest_rate_per_hour", default=20) or 20))
     ctx.register_hook("pre_gateway_dispatch", make_guest_hook(RateLimiter(rate)))
+    inflight = InFlightRevoke(lambda: guests.revoked_at(current()))
+    ctx.register_hook("pre_llm_call", inflight.on_turn_start)
+    ctx.register_hook("transform_llm_output", inflight.on_reply)
 
 
 def make_hook(settings: Settings, limiter: RateLimiter, asker=ask_public_profile):

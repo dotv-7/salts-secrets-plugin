@@ -448,3 +448,18 @@ def test_unanswered_message_gives_the_turn_back(tmp_path, monkeypatch):
     for _ in range(3):
         r = guest.post("/api/chat", json={"message": "q"})
         assert r.status_code == 200 and "Hermes 502" in r.text
+
+
+def test_opening_the_shelf_sends_nothing_to_the_model(client, monkeypatch):
+    client.post("/api/unlock", json={"passphrase": PASS})
+    sent = []
+
+    async def ask(system, prompt):
+        sent.append(prompt)
+        return "{}"
+
+    monkeypatch.setattr("salts_secrets.classify.openai_asker", lambda settings: ask)
+    opened = client.post("/api/board/classify", json={"rules_only": True}).json()
+    assert sent == [] and opened["model"] is False and opened["items"]
+    client.post("/api/board/classify", json={})
+    assert sent

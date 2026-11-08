@@ -93,3 +93,18 @@ def test_draft_needs_a_model(client):
     http, _, _ = client
     item = http.get("/api/plugins/salts-secrets/items").json()["items"][0]
     assert http.post("/api/plugins/salts-secrets/draft", json={"id": item["id"]}).status_code == 503
+
+
+def test_opening_the_tab_sends_nothing_to_the_model(client, monkeypatch):
+    http, _, _ = client
+    sent = []
+
+    async def ask(system, prompt):
+        sent.append(prompt)
+        return "{}"
+
+    monkeypatch.setattr("_salts_secrets_dashboard.classify.openai_asker", lambda settings: ask)
+    opened = http.post("/api/plugins/salts-secrets/classify", json={"rules_only": True}).json()
+    assert sent == [] and opened["model"] is False and opened["items"]
+    http.post("/api/plugins/salts-secrets/classify", json={})
+    assert sent

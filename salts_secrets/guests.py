@@ -46,8 +46,9 @@ def _ro(db: Path) -> Optional[sqlite3.Connection]:
     return con
 
 
-def read_sessions(public_home: Path, limit: int = 500) -> list[dict]:
-    """Every guest session in the public profile with its user/assistant turns, newest first."""
+def read_sessions(public_home: Path, limit: Optional[int] = None) -> list[dict]:
+    """Every guest session in the public profile (or the newest ``limit``) with its user/assistant turns,
+    newest first."""
     con = _ro(Path(public_home) / "state.db")
     if con is None:
         return []
@@ -55,7 +56,7 @@ def read_sessions(public_home: Path, limit: int = 500) -> list[dict]:
         cols = {r[1] for r in con.execute("pragma table_info(messages)")}
         active = "and m.active = 1" if "active" in cols else ""
         out = []
-        for s in con.execute("select * from sessions order by started_at desc limit ?", (limit,)):
+        for s in con.execute("select * from sessions order by started_at desc limit ?", (-1 if limit is None else limit,)):
             s = dict(s)
             rows = con.execute(
                 f"select role, content, timestamp from messages m where m.session_id = ? and m.role in ('user','assistant') "
@@ -130,6 +131,23 @@ def find_hermes() -> Optional[str]:
 
 
 STALE_FILE = "stale_sessions.json"
+REVOKED_AT_FILE = "revoked_at.json"
+
+
+def mark_revoked(public_home: Path, now: Optional[float] = None) -> float:
+    """Record when guests last lost something; a turn that started before it is not delivered."""
+    at = float(now or time.time())
+    path = data_dir(public_home) / REVOKED_AT_FILE
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"at": at}), encoding="utf-8")
+    return at
+
+
+def revoked_at(public_home: Optional[Path] = None) -> float:
+    try:
+        return float(json.loads((data_dir(public_home) / REVOKED_AT_FILE).read_text(encoding="utf-8"))["at"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return 0.0
 
 
 def _stale(public_home: Path) -> dict[str, str]:
@@ -160,38 +178,61 @@ def live_session_id(public_home: Path, session_id: str) -> str:
     return session_id
 
 
+def session_ids(public_home: Path) -> list[str]:
+    """Every session id in the public profile's state.db, with no cap."""
+    con = _ro(Path(public_home) / "state.db")
+    if con is None:
+        return []
+    try:
+        return [r[0] for r in con.execute("select id from sessions order by started_at desc")]
+    finally:
+        con.close()
+
+
 def unpurged(public_home: Path) -> list[str]:
     """Stale sessions that are still stored in the public profile."""
     stale = stale_ids(public_home)
-    return [s["id"] for s in read_sessions(public_home) if s["id"] in stale]
+    return [sid for sid in session_ids(public_home) if sid in stale]
+
+
+def _delete(hermes: Optional[str], sid: str, env: dict) -> bool:
+    if not hermes:
+        return False
+    try:
+        return subprocess.run(
+            [hermes, "sessions", "delete", sid, "--yes"], env=env, capture_output=True, text=True, timeout=120,
+            check=False,
+        ).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def purge(public_home: Path, hermes_bin: Optional[str] = None, keep_ids: Optional[set[str]] = None,
           only_ids: Optional[set[str]] = None) -> dict:
     """Delete guest sessions in the public profile through ``hermes sessions delete`` (all of them, or
-    ``only_ids``). A session that cannot be deleted is marked stale: its guest moves to a fresh session and
-    the next publish retries. ``error`` is set when the Hermes CLI is not available."""
+    ``only_ids``). Every session is marked stale before the first delete, so a timeout, crash or failed delete
+    leaves its guest moved to a fresh session; each delete that succeeds clears its mark, and the next publish
+    retries the rest. ``error`` is set when the Hermes CLI is not available."""
     hermes = hermes_bin or find_hermes()
-    ids = [s["id"] for s in read_sessions(public_home)
-           if s["id"] not in (keep_ids or set()) and (only_ids is None or s["id"] in only_ids)]
+    ids = [sid for sid in session_ids(public_home)
+           if sid not in (keep_ids or set()) and (only_ids is None or sid in only_ids)]
     stale = _stale(public_home)
     if not ids:
         if only_ids:
             _save_stale(public_home, {k: v for k, v in stale.items() if k not in only_ids})
         return {"deleted": 0, "failed": 0}
+    for sid in ids:
+        stale.setdefault(sid, f"{sid}-r{secrets.token_hex(4)}")
+    _save_stale(public_home, stale)
     failed_ids: list[str] = []
     error = "" if hermes else "hermes CLI not found; guest sessions were NOT purged"
     env = {**os.environ, "HERMES_HOME": str(public_home)}
     for sid in ids:
-        ok = bool(hermes) and subprocess.run(
-            [hermes, "sessions", "delete", sid, "--yes"], env=env, capture_output=True, text=True, timeout=120
-        ).returncode == 0
-        if ok:
+        if _delete(hermes, sid, env):
             stale.pop(sid, None)
+            _save_stale(public_home, stale)
         else:
             failed_ids.append(sid)
-            stale.setdefault(sid, f"{sid}-r{secrets.token_hex(4)}")
-    _save_stale(public_home, stale)
     out = {"deleted": len(ids) - len(failed_ids), "failed": len(failed_ids)}
     return {**out, "error": error} if error else out
 
@@ -215,6 +256,7 @@ def revoke_and_purge(
         if not leftover:
             return {"revoked": 0, "archived": 0, "deleted": 0, "failed": 0}
         return {"revoked": 0, "archived": 0, **purge(public_home, hermes_bin, only_ids=leftover)}
+    mark_revoked(public_home)
     archived = archive(owner_home, public_home, reason=f"revoked {len(gone)} item(s)")
     result = purge(public_home, hermes_bin)
     return {"revoked": len(gone), "archived": archived, **result}

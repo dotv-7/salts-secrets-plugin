@@ -275,7 +275,7 @@ async function load(){
   byId=Object.fromEntries(items.map(i=>[i.id,i]));
   if(!perm){try{const r=await fetch('/api/perm');if(!r.ok)throw 0;perm=await r.json();}catch{perm=DEMO_PERM;}}
   for(const s of SOURCES){s.items=s.match?items.filter(it=>s.match(it.group)):[];if(s.id==='skills')s.items.sort((a,b)=>(b.kind==='skill')-(a.kind==='skill'));}
-  initial=snapshot();build();drawTriage();if(!demo&&!autoRan){autoRan=true;runClassify();}}
+  initial=snapshot();build();drawTriage();if(!demo&&!autoRan){autoRan=true;runClassify(true);}}
 const sPub=s=>s.items.filter(i=>pub.has(i.id)), sLock=s=>s.locked||(s.items.length>0&&s.items.every(i=>!i.publishable));
 const short=t=>esc(String(t).replace(/^.*› /,''));
 const sHits=s=>hits?s.items.filter(i=>hits.has(i.id)).length:0;
@@ -433,10 +433,10 @@ function drawTriage(){const t=$('#triage');if(!t)return;const n=tierCounts(),don
   `<div class="tb"><button class="act" id="t-run">${done?'Classify again':'Classify'}</button><button class="act" data-bulk="A" ${n.A?'':'disabled'}>A · adopt all ${n.A} as-is</button><button class="act" data-bulk="B" ${n.B?'':'disabled'}>B · draft guest versions for all ${n.B}</button><button class="act" data-bulk="C" ${n.C?'':'disabled'}>C · keep all ${n.C} private</button><button class="act primary" id="t-save" ${dirty?'':'disabled'}>Save &amp; sync</button></div>`+
   (combo&&combo.hit?`<div class="warn">${esc(combo.message)} · ${combo.ids.length} entries marked B</div>`:'')+
   `<div class="tnote">A crosses unchanged, B crosses only as a guest version, C stays here. A bulk button only ever takes entries of its own tier; C never crosses in bulk. Every entry stays editable one by one, and every click is written to the approval log.</div>`;}
-async function runClassify(){const b=$('#t-run');if(b){b.disabled=true;b.textContent='Classifying…';}const t0=Date.now();
-  try{const r=await fetch('/api/board/classify',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(!r.ok)throw new Error(r.status);const j=await r.json();rulesInfo=j.rules||{};
+async function runClassify(rulesOnly){const b=$('#t-run');if(b&&!rulesOnly){b.disabled=true;b.textContent='Classifying…';}const t0=Date.now();
+  try{const r=await fetch('/api/board/classify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rules_only:rulesOnly===true})});if(!r.ok)throw new Error(r.status);const j=await r.json();rulesInfo=j.rules||{};
     cls={};for(const [id,c] of Object.entries(j.items||{}))cls[id]=c;
-    toast(`Classified in ${Math.round((Date.now()-t0)/1000)}s · ${j.counts.A} A · ${j.counts.B} B · ${j.counts.C} C`+(j.model?'':' · no model: rules only, nothing is A')+((j.errors||[]).length?` · ${j.errors.length} batch(es) failed`:''));}
+    if(!rulesOnly)toast(`Classified in ${Math.round((Date.now()-t0)/1000)}s · ${j.counts.A} A · ${j.counts.B} B · ${j.counts.C} C`+(j.model?'':' · no model: rules only, nothing is A')+((j.errors||[]).length?` · ${j.errors.length} batch(es) failed`:''));}
   catch(err){toast('Classify failed: '+err.message);}
   drawTriage();if(open)renderList();}
 document.addEventListener('click',async e=>{const t=e.target;

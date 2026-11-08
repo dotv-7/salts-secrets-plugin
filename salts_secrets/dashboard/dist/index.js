@@ -50,12 +50,14 @@
       setVia({});
     }, [state.data]);
 
-    const runClassify = useCallback(() => {
-      setBusy("Classifying…");
-      post("/classify", {}).then((r) => { setCls(r.items || {}); setBusy(r.model ? "" : "No model configured: rules only, so nothing is A."); },
-        (e) => setBusy("Classify failed: " + String(e.message || e)));
+    const runClassify = useCallback((rulesOnly) => {
+      setBusy(rulesOnly ? "" : "Classifying…");
+      post("/classify", { rules_only: rulesOnly === true }).then((r) => {
+        setCls(r.items || {});
+        setBusy(rulesOnly === true ? "" : r.model ? "" : "No model configured: rules only, so nothing is A.");
+      }, (e) => setBusy("Classify failed: " + String(e.message || e)));
     }, []);
-    useEffect(() => { if (state.data) runClassify(); }, [state.data && state.data.items.length]);
+    useEffect(() => { if (state.data) runClassify(true); }, [state.data && state.data.items.length]);
 
     const mark = (ids, how) => setVia((prev) => { const next = { ...prev }; ids.forEach((id) => (next[id] = how)); return next; });
 
@@ -112,7 +114,7 @@
           h("p", { className: "ss-muted" }, "Rules first, then your model: A crosses unchanged, B only as a guest version, C stays private. ",
             "A bulk button only takes entries of its own tier and C never crosses in bulk; every click goes to the approval log."),
           h("div", { className: "ss-actions" },
-            h("button", { onClick: runClassify }, "Classify"),
+            h("button", { onClick: () => runClassify(false), title: "Sends the items that changed since the last run to your own model" }, "Classify"),
             h("button", { disabled: !n.A, onClick: () => bulk("A") }, `A · adopt all ${n.A} as-is`),
             h("button", { disabled: !n.B, onClick: () => bulk("B") }, `B · draft guest versions for all ${n.B}`),
             h("button", { disabled: !n.C, onClick: () => bulk("C") }, `C · keep all ${n.C} private`),

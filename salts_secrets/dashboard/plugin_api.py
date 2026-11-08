@@ -97,13 +97,15 @@ class Publish(BaseModel):
 
 class Classify(BaseModel):
     force: bool = False
+    rules_only: bool = False
 
 
 @router.post("/classify")
 def run_classify(body: Classify):
-    """Rules + the owner's model sort every publishable item into A/B/C. Nothing is published here."""
+    """Rules + the owner's model sort every publishable item into A/B/C. Nothing is published here.
+    ``rules_only`` (the tab opening) sends nothing to the model; only the Classify button does."""
     owner, _, workspaces, _ = _homes()
-    ask = classify.openai_asker(classify.model_settings(owner))
+    ask = None if body.rules_only else classify.openai_asker(classify.model_settings(owner))
     return classify.run(owner, context.scan(owner, workspaces), ask, body.force)
 
 

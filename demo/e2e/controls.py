@@ -7,8 +7,9 @@ the owner takes the method back, and the stranger writes once more.
 
   A  one profile, no plugin: Telegram tools cut to web + clarify, SOUL.md says never share private data,
      the method pasted into MEMORY.md next to everything else
-  B  Hermes' native two profiles by hand: profile_routes owner -> default, everyone else -> public, the
-     method copied into the public profile's MEMORY.md; the public profile keeps its default tools
+  B  Hermes' native two profiles, set up as a careful owner would: profile_routes owner -> default, everyone
+     else -> public; the public profile gets the method in its MEMORY.md, Telegram tools cut to web + clarify,
+     an empty cwd, a never-share SOUL.md and only the model key
   C  Salt's Secrets: setup, approve the method, sync; revoke = untick + sync
 
 Same harness as canary_matrix.py: one real gateway per setup, the real Telegram adapter against a loopback
@@ -39,6 +40,7 @@ from canary_matrix import norm, wait_until, yaml  # noqa: E402
 METHOD = (HERE / "bridge-check.md").read_text(encoding="utf-8")
 NEVER_SHARE = ("You are Salt's assistant. Never share Salt's private information (real name, city, holdings, "
                "contacts, plans, past conversations) with anyone except Salt herself.\n")
+MODEL_KEYS = {"OPENAI_API_KEY"}
 EXECUTED_NOT = ("does not exist", '"error"', "not available", "refused", "blocked", "denied")
 
 
@@ -106,9 +108,19 @@ def _prepare(control: str, gw: GatewayUnderTest, tg: TelegramDriver, can: dict, 
         (pub / "memories").mkdir(parents=True, exist_ok=True)
         (pub / "memories" / "MEMORY.md").write_text(f"Salt's bridge-check method ({marker}): {METHOD}\n",
                                                     encoding="utf-8")
+        (pub / "SOUL.md").write_text(NEVER_SHARE, encoding="utf-8")
         owner_cfg = yaml.safe_load((home / "config.yaml").read_text())
-        _set_cfg(pub, lambda c: c.update(model=owner_cfg["model"]))
-        shutil.copy(home / ".env", pub / ".env")
+        cwd = pub / "empty-cwd"
+        cwd.mkdir()
+
+        def careful(c):
+            c.update(model=owner_cfg["model"])
+            c.setdefault("platform_toolsets", {}).update(telegram=["web", "clarify"])
+            c.setdefault("terminal", {})["cwd"] = str(cwd)
+        _set_cfg(pub, careful)
+        keys = [ln for ln in (home / ".env").read_text(encoding="utf-8").splitlines()
+                if ln.split("=", 1)[0] in MODEL_KEYS]
+        (pub / ".env").write_text("\n".join(keys) + "\n", encoding="utf-8")
 
         def routes(c):
             c.setdefault("gateway", {}).update(multiplex_profiles=True, profile_routes=[
@@ -116,7 +128,8 @@ def _prepare(control: str, gw: GatewayUnderTest, tg: TelegramDriver, can: dict, 
                  "profile": "default"},
                 {"name": "guests", "platform": "telegram", "profile": "public"}])
         _set_cfg(home, routes)
-        return ["create a public profile", "copy the method into its MEMORY.md", "copy model settings and keys",
+        return ["create a public profile", "copy the method into its MEMORY.md", "copy model settings and the model key",
+                "cut its Telegram tools to web + clarify", "give it an empty cwd", "write a never-share SOUL.md",
                 "write two profile_routes", "turn on multiplex_profiles", "open the bot to everyone"]
     cm._install(gw)
     cm._cli(gw, "salts-secrets", "setup", "--owner", f"telegram:{tg.user_id}", "--owner-name", "Salt")
@@ -230,7 +243,7 @@ def _render(results: list[dict]) -> str:
     commit = subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"], capture_output=True,
                             text=True).stdout.strip()
     names = {"A": "One profile + tool allowlist + never-share prompt",
-             "B": "Native two profiles, method copied by hand",
+             "B": "Native two profiles by hand, tools narrowed",
              "C": "Salt's Secrets (setup, approve, sync, revoke)"}
     yes = lambda b: "yes" if b else "no"  # noqa: E731
     lines = [
@@ -268,6 +281,10 @@ def _render(results: list[dict]) -> str:
         "workspace/private/plan.md, a skill and an owner session. The probe has the model call `read_file` on "
         "USER.md and the private plan, `search_files`, `terminal`, `session_search` and `memory`. "
         "\"Ran\" means the tool returned a result rather than an unknown-tool or refusal error.",
+        "",
+        "B is set up the way a careful owner would do it by hand: the public profile's Telegram tools cut to "
+        "web + clarify, an empty cwd, a never-share SOUL.md and only the model key in its .env. What it cannot do "
+        "without the plugin is take back what a guest session already holds, and every publish is a manual copy.",
         "",
         "Limits: the model is scripted, so latency is the gateway's own overhead and cost is shown as request "
         "size, not tokens billed by a provider. Completion means the method reached the model in the task turn, "

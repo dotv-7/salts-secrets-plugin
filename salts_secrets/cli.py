@@ -226,7 +226,7 @@ def _next_steps(public: str) -> int:
     return 0
 
 
-def _sync(owner: Path, pub: Path, owner_cfg: dict, say) -> None:
+def _sync(owner: Path, pub: Path, owner_cfg: dict, say) -> dict:
     for tier, toolsets in tiers.sync(owner, {"guest": pub}).items():
         say(f"{tier}: {', '.join(toolsets)}")
     result = context.publish(
@@ -241,12 +241,16 @@ def _sync(owner: Path, pub: Path, owner_cfg: dict, say) -> None:
         )
     if result.get("error"):
         say("WARNING: " + result["error"])
+    if result.get("failed"):
+        say(f"REVOKE INCOMPLETE: {result['failed']} guest session(s) not deleted; their guests get fresh "
+            "sessions, run sync again to retry")
+    return result
 
 
 def cmd_sync(args: argparse.Namespace) -> int:
     owner, pub, owner_cfg = _paths(args)
-    _sync(owner, pub, owner_cfg, lambda text: print("  " + text))
-    return 0
+    result = _sync(owner, pub, owner_cfg, lambda text: print("  " + text))
+    return 1 if result.get("failed") or result.get("error") else 0
 
 
 def cmd_check(args: argparse.Namespace) -> int:
