@@ -1,5 +1,7 @@
 # Salt's Secrets
 
+> What if the Hermes you've spent thousands of hours growing with could talk to everyone, without giving away a single secret?
+
 ### Identity-based context isolation for Hermes Agent. One Hermes, two minds.
 
 [![tests](https://github.com/dotv-7/salts-secrets-plugin/actions/workflows/tests.yml/badge.svg)](https://github.com/dotv-7/salts-secrets-plugin/actions/workflows/tests.yml)
