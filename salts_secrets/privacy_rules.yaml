@@ -1,0 +1,330 @@
+# Privacy screening rules: the first of two layers that decide an item's tier on the Context page.
+#   A  publish as-is      B  needs a guest rewrite      C  never public
+# A rule names the lowest tier an item can get when it hits; the model can only raise it, never lower
+# it, and an item is A only when no rule hits AND the model says A. Patterns are Python regular
+# expressions matched case-insensitively ((?-i:...) for case-sensitive parts). Every rule carries at
+# least one example that must hit and one that must not (salts_secrets/tests/test_privacy.py).
+#
+# Add your own words without editing this file: put the same keys in
+# <HERMES_HOME>/plugin-data/salts-secrets/privacy_rules.yaml. Its `dictionary` lists are appended to
+# the ones below and its `rules` are added after these.
+version: 1
+
+# Names and places that identify the owner. Matched as whole words, case-insensitive.
+dictionary:
+  real_names: []   # your real name, surname, other legal names
+  family: []       # partner, parents, siblings, children, pets
+  colleagues: []   # boss, coworkers, clients, employer names
+  doctors: []      # doctors, therapists, clinics
+  contacts: []     # anyone else you talk about
+  places: []       # home town, neighbourhood, city you live in
+  exchanges: []    # exchanges, banks, brokers you hold accounts at
+
+# Which rule (and tier) a hit in each dictionary list counts as.
+dictionary_rules:
+  real_names: {rule: dictionary_real_name, group: identity, tier: C}
+  family: {rule: dictionary_family, group: identity, tier: C}
+  colleagues: {rule: dictionary_colleague, group: identity, tier: C}
+  doctors: {rule: dictionary_doctor, group: health_family, tier: C}
+  contacts: {rule: dictionary_contact, group: identity, tier: C}
+  places: {rule: dictionary_place, group: identity, tier: B, quasi: place}
+  exchanges: {rule: dictionary_exchange, group: assets, tier: B}
+
+rules:
+  # 1. Credentials and keys -------------------------------------------------------------------------
+  - name: credential_words
+    group: credentials
+    tier: C
+    description: Passwords, PINs, one-time codes, recovery and seed phrases, private keys, API keys, tokens.
+    patterns:
+      - '\b(?:pass(?:word|phrase|code)s?|otp|2fa|mfa|totp|one[- ]time code|recovery (?:code|email|phrase|key)s?|seed phrase|mnemonic|private key|secret key|api[ _-]?keys?|access token|auth token|bearer)\b'
+      - '(?-i:\bPIN\b)|\bpin code\b'
+      - '密码|口令|验证码|助记词|私钥|恢复码|动态码|令牌'
+    examples:
+      hit: ["Router admin password is in the drawer", "phone PIN 4471", "seed phrase location: blue notebook", "家里的 Wi-Fi 密码", "Bearer abc"]
+      miss: ["I pinned the tweet about reserves", "She checks the date first"]
+  - name: token_prefix
+    group: credentials
+    tier: C
+    description: Strings shaped like real secrets (sk-, ghp_, xox*, AKIA, AIza, JWT).
+    patterns:
+      - '\b(?:sk-(?:ant-|proj-)?[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{10,}|xox[abposr]-[A-Za-z0-9-]{6,}|(?-i:AKIA)[0-9A-Z]{12,}|(?-i:AIza)[0-9A-Za-z_-]{20,}|eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,})'
+    examples:
+      hit: ["key: sk-proj-abcdefgh1234", "token ghp_0123456789abcdef", "slack xoxb-1234-abcd", "AKIAABCDEFGHIJKL"]
+      miss: ["ask-me-anything thread", "the risk of a desk"]
+  - name: wifi_router
+    group: credentials
+    tier: C
+    description: Wi-Fi networks and keys, router logins.
+    patterns:
+      - 'wi-?fi\b.{0,40}(?:password|pass|key|code|密码)|\bssid\b|router.{0,20}(?:login|admin|password|user)|路由器|无线密码|wi-?fi\s*密码'
+    examples:
+      hit: ["Home Wi-Fi network MochiNet, password lisboa2024", "router admin login", "SSID: MEO-1234"]
+      miss: ["the café had free wifi and good coffee"]
+  - name: ssh_access
+    group: credentials
+    tier: C
+    description: SSH users, hosts and key paths.
+    patterns:
+      - '\bssh\b|id_rsa|id_ed25519|authorized_keys|\.ssh/|\.pem\b|\broot@'
+    examples:
+      hit: ["ssh deploy@203.0.113.4 -i ~/.ssh/id_ed25519", "the key is server.pem"]
+      miss: ["shh, the baby is asleep"]
+  - name: vault_kit
+    group: credentials
+    tier: C
+    description: Password managers, vaults, emergency kits.
+    patterns:
+      - '1password|bitwarden|keepass|lastpass|dashlane|\b(?:password|secret|key|hashicorp|my|her|the) vault\b|\bvault (?:item|entry|password)|emergency kit|recovery kit|密码管理'
+    examples:
+      hit: ["Emergency Kit printed and in the safe", "everything is in 1Password", "the key is in my vault"]
+      miss: ["a pole vault record"]
+
+  # 2. Identity and contact -------------------------------------------------------------------------
+  - name: email_address
+    group: identity
+    tier: C
+    description: Email addresses.
+    patterns: ['[\w.+-]+@[\w-]+\.[\w.-]+']
+    examples:
+      hit: ["resets go to lena.m@proton.me"]
+      miss: ["@saltwater_sats on X"]
+  - name: phone_number
+    group: identity
+    tier: C
+    description: Phone numbers (international, local, Chinese mobile).
+    patterns:
+      - '(?<![\w.-])(?:\+\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?)\d{3,4}[\s-]?\d{3,4}(?![\w-])'
+      - '\b(?:phone|mobile|cell|whatsapp|telegram)\s*(?:number|no\.?|#)|手机号?|电话'
+    examples:
+      hit: ["call +351 912 345 678", "我的手机号 13812345678", "phone number on file"]
+      miss: ["issue 12 of Low Tide", "reserves fell 40% in 2025"]
+  - name: bank_card
+    group: identity
+    tier: C
+    description: IBANs, card numbers, card endings.
+    patterns:
+      - '(?-i:\b[A-Z]{2}\d{2}(?:\s?[A-Z0-9]{4}){3,7}\b)'
+      - '\b(?:\d[ -]?){13,19}\b'
+      - '\biban\b|\bswift\b|\bbic\b|card ending|ending in \d{4}|last (?:four|4) digits|尾号|银行卡|卡号'
+    examples:
+      hit: ["IBAN PT50 0002 0123 1234 5678 9015 4", "card ending 4471", "银行卡尾号 8812"]
+      miss: ["block 19,450,112 confirmed"]
+  - name: id_document
+    group: identity
+    tier: C
+    description: Passport, national ID, tax and social security numbers.
+    patterns:
+      - '\bpassport\b|national id|id card|\bnif\b|\bssn\b|social security|tax (?:id|number)|cartão de cidadão|身份证|护照|社保'
+      - '\b\d{3}-\d{2}-\d{4}\b|\b\d{17}[\dXx]\b'
+    examples:
+      hit: ["passport expires 2029", "NIF 123456789", "身份证号"]
+      miss: ["the protocol's ID field"]
+  - name: street_address
+    group: identity
+    tier: C
+    description: Street addresses, floors, flats, postcodes.
+    patterns:
+      - '\b\d{1,5}\s+(?:[A-Z][\w''-]+\s){0,3}(?:street|st\.|avenue|ave\.?|road|rd\.|lane|boulevard|blvd)\b'
+      - '\b(?:rua|avenida|travessa|largo|calle|via|rue)\s+(?:d[aeo]s?\s+)?[A-ZÀ-Ý]'
+      - '\b\d+(?:st|nd|rd|th)\s+floor\b|\bfloor\s+\d+\b|\bapt\.?\s*\d+|\bapartment\s+\d+|\bflat\s+\d+'
+      - '\b(?:zip|post(?:al)? ?code)\b|\b\d{4}-\d{3}\b|(?-i:\b[A-Z]{1,2}\d[A-Z\d]? \d[A-Z]{2}\b)'
+      - '\d+\s*号|\d+\s*楼|\d+\s*室|门牌|小区|街道|邮编'
+    examples:
+      hit: ["Rua da Bica 12, 3rd floor", "postcode 1200-109", "住在 3 号楼 502 室"]
+      miss: ["the third floor of the argument"]
+  - name: employer_title
+    group: identity
+    tier: B
+    quasi: profession
+    description: Employer, company, job title, profession tied to the owner.
+    patterns:
+      - '\b(?:works? (?:at|for)|employer|employed (?:at|by)|day job|job title|my (?:boss|manager|team lead)|offer from|colleagues?|coworkers?|i work as|she works as|her job)\b'
+      - '\b(?:inc|ltd|llc|gmbh|lda|s\.a)\b\.?'
+      - '我在.{0,8}(?:公司|上班)|雇主|上司|同事|职位|职业|入职|跳槽|公司'
+    examples:
+      hit: ["day job: product designer at a fintech", "Northwind Lda offer", "我在一家公司上班"]
+      miss: ["the protocol's team never replied"]
+  - name: school
+    group: identity
+    tier: B
+    quasi: profession
+    description: Schools, universities, degrees.
+    patterns:
+      - '\b(?:university|universidade|college|high school|school of|master''?s degree|bachelor|phd|alma mater|graduated)\b'
+      - '大学|学院|中学|小学|硕士|本科|博士|毕业'
+    examples:
+      hit: ["graduated from the University of Porto", "硕士读的计算机"]
+      miss: ["old-school checklist"]
+  - name: birthday_age
+    group: identity
+    tier: B
+    quasi: age
+    description: Birthdays, birth years, ages.
+    patterns:
+      - '\b(?:birthday|born (?:on|in)|date of birth|dob|years old|aged \d{1,2})\b|\b(?:i''m|she''s|he''s|i am|she is)\s+\d{2}\b'
+      - '生日|出生|\d{1,2}\s*岁'
+    examples:
+      hit: ["Lena, born in 1995", "She is 31 and lives by the sea", "今年 23 岁"]
+      miss: ["the 31st issue"]
+  - name: place_of_life
+    group: identity
+    tier: B
+    quasi: place
+    description: Where the owner lives, grew up or moved (city level counts for the combination rule).
+    patterns:
+      - '\b(?:live[sd]? in|living in|based in|moved to|grew up in|hometown|neighbou?rhood|my flat|my apartment)\b'
+      - '住在|搬到|老家|家乡|长大'
+    examples:
+      hit: ["she grew up in Bonfim", "based in Lisbon", "搬到里斯本以后"]
+      miss: ["the token lives on two chains"]
+
+  # 3. Assets and accounts --------------------------------------------------------------------------
+  - name: wallet_address
+    group: assets
+    tier: C
+    description: EVM, Bitcoin and Solana addresses.
+    patterns:
+      - '\b0x[a-f0-9]{40}\b'
+      - '(?-i:\b(?:bc1[a-z0-9]{25,60}|[13][a-km-zA-HJ-NP-Z1-9]{25,34})\b)'
+      - '(?-i:\b(?=[1-9A-HJ-NP-Za-km-z]*\d)(?=[1-9A-HJ-NP-Za-km-z]*[A-Z])[1-9A-HJ-NP-Za-km-z]{32,44}\b)'
+      - '钱包地址|wallet address|hot wallet|cold wallet|ledger nano'
+    examples:
+      hit: ["hot wallet 0x52908400098527886E0F7030069857D2E4169EE7", "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq", "7EcDhSYGxXyscszYEp35KHN8vvw3svAuLKTzXwCFLtV"]
+      miss: ["0x prefix means hex", "a 40-character string"]
+  - name: exchange_account
+    group: assets
+    tier: B
+    description: Exchanges, banks and brokers the owner has accounts at.
+    patterns:
+      - '\b(?:binance|kraken|coinbase|bybit|okx|bitfinex|kucoin|bitstamp|huobi|revolut|wise|n26|interactive brokers)\b'
+      - '交易所账户|开户|券商'
+    examples:
+      hit: ["Kraken main, Binance backup"]
+      miss: ["the exchange rate moved"]
+  - name: personal_finance
+    group: assets
+    tier: B
+    description: Holdings, positions, balances, salary, rent, loans, personal amounts.
+    patterns:
+      - '\b(?:my|her|our) (?:holdings?|positions?|portfolio|balance|bags?|stack|savings|salary|rent|mortgage|loan|debt)\b'
+      - '\b(?:salary|payslip|pay ?check|payday|net worth|annual pay|per month rent|rent is)\b'
+      - '\b(?:i|she) (?:hold|holds|bought|sold|own|owns)\b[^.\n]{0,40}(?:[$€£¥]\s?\d|\d[\d,.]*\s?(?:k|m)?\s?(?:usd|eur|usdc|usdt|btc|eth|sol)\b)'
+      - '持仓|仓位|余额|工资|薪水|月薪|年薪|薪酬|房租|房贷|贷款|存款'
+    examples:
+      hit: ["current salary 68k", "I hold 2.1 ETH and 40k USDC", "年薪 68k"]
+      miss: ["the protocol held $40M in reserves"]
+
+  # 4. Health, emotions, family ---------------------------------------------------------------------
+  - name: health
+    group: health_family
+    tier: C
+    description: Therapy, clinics, diagnoses, medication, appointments, blood type, allergies.
+    patterns:
+      - '\b(?:therapist|therapy|psychiatrist|counsell?or|clinic|hospital|diagnos(?:is|ed)|medication|prescription|dosage|blood type|allerg(?:y|ic)|thyroid|diabetes|insulin|metformin|sertraline|ibuprofen|appointment)\b|\b\d+\s?mg\b'
+      - '心理咨询|治疗|诊所|医院|诊断|药|过敏|血型|复查|预约|病'
+    examples:
+      hit: ["therapy every other Thursday", "mum takes metformin 500 mg", "甲状腺复查"]
+      miss: ["the protocol's health factor"]
+  - name: loss_and_conflict
+    group: health_family
+    tier: B
+    description: Deaths, anniversaries of a death, breakups, conflicts, threats.
+    patterns:
+      - '\b(?:passed away|died|death|funeral|anniversary|break ?up|broke up|divorce|threat(?:s|ening)?|harass(?:ment|ed)|stalk(?:er|ing)|police report)\b'
+      - '忌日|去世|葬礼|分手|离婚|冲突|吵架|威胁|骚扰|报警'
+    examples:
+      hit: ["3 April is her father's death anniversary", "three threatening emails", "父亲去世"]
+      miss: ["the token's unlock schedule"]
+  - name: family_relations
+    group: health_family
+    tier: B
+    description: Family members and partners mentioned by role.
+    patterns:
+      - '\b(?:my|her|his) (?:mum|mom|mother|dad|father|sister|brother|partner|boyfriend|girlfriend|husband|wife|ex|son|daughter|grandma|grandmother|cat|dog)\b'
+      - '妈妈|母亲|爸爸|父亲|姐姐|妹妹|哥哥|弟弟|男友|女友|丈夫|妻子|前任|孩子|猫|狗'
+    examples:
+      hit: ["her sister lives abroad", "我的猫叫"]
+      miss: ["the mother of all rugs"]
+  - name: self_marked_private
+    group: health_family
+    tier: C
+    description: The author marked it private.
+    patterns:
+      - '\b(?:private|confidential|do not (?:share|publish|tell)|don''t (?:share|tell|publish)|never (?:share|mention|publish|tell)|off the record|between us|nda)\b'
+      - '私密|保密|别说|不要说|不要告诉|不要公开|不公开|机密'
+    examples:
+      hit: ["Never share this with anyone", "这条别说出去", "NDA until March"]
+      miss: ["the public mint"]
+
+  # 5. File and location signals (where an item comes from, not what it says) -------------------
+  - name: private_folder
+    group: source
+    tier: C
+    description: The file lives under a private/ folder.
+    source: {path: '(?:^|/)private/'}
+    examples:
+      hit: [{path: "/home/lena/.hermes/private/personal-records.md"}]
+      miss: [{path: "/home/lena/.hermes/workspace/public/lowtide/01.md"}]
+  - name: owner_only_file
+    group: source
+    tier: B
+    description: The file is readable by its owner only (mode 600).
+    source: {mode: '600'}
+    examples:
+      hit: [{path: "/tmp/a.md", mode: "600"}]
+      miss: [{path: "/tmp/a.md", mode: "644"}]
+  - name: secret_filename
+    group: source
+    tier: C
+    description: The file name says secret or credential.
+    source: {path: '(?:secret|credential|passw|token|\.env)[^/]*$'}
+    examples:
+      hit: [{path: "/w/notes/secrets.md"}]
+      miss: [{path: "/w/notes/recipes.md"}]
+  - name: personal_filename
+    group: source
+    tier: B
+    description: The file name says record, personal, diary or journal.
+    source: {path: '(?:record|personal|diary|journal|contacts?|budget)[^/]*(?:/[^/]*)?$'}
+    examples:
+      hit: [{path: "/w/journal/2026-11-01.md"}, {path: "/w/contacts.md"}]
+      miss: [{path: "/w/public/posts/2026.md"}]
+  - name: memory_private_section
+    group: source
+    tier: C
+    description: A MEMORY.md entry the owner headed "Private".
+    source: {kinds: [memory], text: '^\s*(?:#+\s*)?(?:\[?private\]?|私密)\b'}
+    examples:
+      hit: [{kind: memory, text: "Private: the reset email is in records"}]
+      miss: [{kind: memory, text: "Blog is lowtide.news"}]
+  - name: user_profile_entry
+    group: source
+    tier: B
+    description: Everything in USER.md starts at B (it is a profile of the owner).
+    source: {kinds: [user]}
+    examples:
+      hit: [{kind: user, text: "Prefers short answers"}]
+      miss: [{kind: memory, text: "Prefers short answers"}]
+
+  # Cross-item rules ---------------------------------------------------------------------------------
+  - name: specific_date
+    group: dates
+    tier: B
+    description: A specific calendar date; the model judges whether it marks a personal event.
+    patterns:
+      - '\b\d{4}-\d{1,2}-\d{1,2}\b|\b\d{1,2}/\d{1,2}/\d{2,4}\b'
+      - '\b\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b'
+      - '\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b'
+      - '\d{1,2}\s*月\s*\d{1,2}\s*[日号]'
+    examples:
+      hit: ["What is 3 April to her?", "called Harbor on 2025-10-03", "4 月 3 日", "April 3rd"]
+      miss: ["every April", "issue 3"]
+
+# Reported when the items being published together carry two or more of these kinds of hint.
+combination:
+  rule: combination
+  tier: B
+  needs: 2
+  kinds: [place, profession, age]
+  message: Together these items could locate a real person (city, profession, age or birthday).

@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Permissions · Hermes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Antonio:wght@400&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+:root{--mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,"Noto Sans Mono CJK SC","PingFang SC",monospace;--disp:"Antonio",Impact,"PingFang SC",sans-serif;
+--bg:#f2f2f2;--surface:#fdfdfd;--text:#000091;--dim:#6b6bd6;--accent:#0000f2;--border:rgba(0,0,242,.35);--hair:rgba(0,0,242,.15);--ok:#0000f2;--err:#b91c1c;--warn:#b45309;--sel:#e6e6f4;--code:#fff;--frame:#7f7fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:13.5px/1.6 var(--mono);-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;border:6px solid var(--frame);pointer-events:none;z-index:9}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:8;opacity:.10;background:radial-gradient(circle at 50% 50%,rgba(0,0,242,.35) 0 .5px,transparent 1px) 0 0/4px 4px}
+.wrap{max-width:1100px;margin:0 auto;padding:0 24px 80px}
+.bar{position:sticky;top:0;background:var(--bg);display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:14px 0 12px;border-bottom:1px solid var(--accent);z-index:3}
+.brand{color:var(--accent);font:400 24px/1 var(--disp);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap}.sp{flex:1}.dim{color:var(--dim)}
+a,button{font:inherit;font-size:12px;letter-spacing:.06em;color:var(--accent);background:none;border:1px solid var(--accent);border-radius:0;padding:3px 10px;cursor:pointer;text-decoration:none;transition:background .15s,color .15s}
+a:hover,button:hover:not(:disabled){background:var(--sel)}
+button.primary{color:#fff;background:var(--accent);border-color:var(--accent);font-weight:600}
+button.primary:hover:not(:disabled){background:#0000c2}
+button:disabled{opacity:.4;cursor:default}
+input[type=search]{font:inherit;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:0;padding:3px 8px;min-width:200px}
+.stats span{margin-right:12px}.pub{color:var(--ok)}.chg{color:var(--warn)}
+details{border:1px solid var(--hair);border-radius:0;margin:12px 0;background:var(--surface)}
+summary{padding:8px 12px;cursor:pointer;color:var(--accent);display:flex;gap:10px}
+summary::marker{color:var(--dim)}
+summary .dim{margin-left:auto}
+.row{display:grid;grid-template-columns:28px 1fr auto;gap:8px;padding:6px 12px;border-top:1px solid var(--hair);align-items:start}
+.row:hover{background:var(--sel)}.row .t{overflow-wrap:anywhere}.row .src{color:var(--dim);font-size:12px}
+.row pre{display:none;white-space:pre-wrap;background:var(--code);border:1px solid var(--hair);padding:8px;border-radius:0;margin:6px 0 0;max-height:300px;overflow:auto}
+.row.open pre{display:block}
+.tag{font-size:11px;letter-spacing:.06em;border:1px solid currentColor;border-radius:0;padding:0 6px;white-space:nowrap}
+.tag.private{color:var(--dim)}.tag.public{color:#fff;background:var(--ok);border-color:var(--ok)}.tag.changed{color:var(--warn)}.tag.locked{color:var(--err)}
+input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin-top:3px}
+#preview{display:none;white-space:pre-wrap;background:var(--code);border:1px solid var(--accent);border-radius:0;padding:12px;margin-top:12px}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;border:0;padding:6px 14px;border-radius:0;display:none;z-index:10}
+</style>
+<style>
+table.m{border-collapse:collapse;width:100%;margin:8px 0}
+.m th,.m td{border-top:1px solid var(--hair);padding:6px 10px;text-align:left;vertical-align:top}
+.m th{color:var(--accent);font-weight:500;font-size:12px;letter-spacing:.08em;text-transform:uppercase;background:var(--surface)}
+.m td.c,.m th.c{text-align:center;width:90px}
+.m tr:hover td{background:var(--sel)}
+.m .cat td{color:var(--accent);background:var(--sel);font-size:12px;letter-spacing:.06em}
+.lk{color:var(--err);font-size:12px}.wn{color:var(--warn);font-size:12px}
+.ok{color:var(--ok)}.no{color:var(--dim)}
+select,input[type=text]{font:inherit;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:0;padding:2px 6px}
+select:focus,input[type=text]:focus{outline:none;border-color:var(--accent)}
+.code{color:var(--accent);background:#fff;border:1px solid var(--accent);padding:6px 10px;border-radius:0;display:inline-block;margin:6px 0;user-select:all;letter-spacing:.1em}
+.card{border:1px solid var(--hair);border-radius:0;background:var(--surface);padding:10px 12px;margin:12px 0}
+.tiers span{margin-right:14px}
+code{background:var(--sel);color:var(--accent);padding:1px 5px}
+.bar{position:sticky;top:0;height:64px;padding:0 36px;margin:0;display:flex;justify-content:space-between;align-items:center;flex-wrap:nowrap;gap:0;border-bottom:1px solid var(--hair);color:var(--accent);background:var(--bg);z-index:3}
+.bar .l,.bar .r{display:flex;align-items:center;gap:16px}.bar .r{gap:26px}.bar .line{width:40px;height:1px;background:currentColor}
+.lbl{font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.bar a{border:0;padding:0;background:none;color:var(--accent)}.bar a:hover{background:none;text-decoration:underline;text-underline-offset:4px}
+.bar button.primary{margin-left:6px}
+@media (max-width:640px){.bar{padding:0 16px}.bar .r{gap:14px}.bar .line{display:none}}
+.robar{position:sticky;top:0;z-index:20;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:8px 14px;text-align:center}
+.ro #save,.ro details button{display:none!important}.ro input,.ro select{pointer-events:none;opacity:.6}
+</style></head><body>
+<div class="bar"><div class="l"><span class="lbl">LENA MOREAU</span><span class="line"></span><span class="lbl">PERMISSIONS</span></div>
+  <div class="r"><a class="lbl" href="/">CHAT</a><a class="lbl" href="/shelf">CONTEXT</a><a class="lbl" href="/trace">TRACE</a><a class="lbl" href="/doc">DOC</a><button id="save" class="primary" disabled>Save &amp; sync</button></div></div>
+<div class="wrap">
+<p class="dim" style="margin:16px 0 0">Who can do what. Who can know what is set on the CONTEXT page.</p>
+<div class="card"><b>Two tiers today</b>　<span class="tiers">
+  <span><b class="ok">Owner</b> you, unlocked with the passphrase, every tool</span><span class="dim"><b>Admin</b> planned, not implemented</span><span class="dim"><b>User</b> planned, not implemented</span>
+  <span><b>Guest</b> everyone who does not sign in</span><span><b class="lk">Blocked</b> never reaches Hermes (device + IP)</span></span>
+  <div class="dim" id="files"></div></div>
+<details open><summary>Tool access<span class="dim">tick = allowed for that tier; red lock = never for anyone but the owner</span></summary><div style="overflow-x:auto"><table class="m" id="matrix"></table></div></details>
+<details open><summary>Access control<span class="dim">a blocked person stays blocked after clearing cookies</span></summary><div style="padding:8px 12px">
+  <label><input type="checkbox" id="gaccess"> Let guests chat without signing in</label>
+  <span class="dim">(off: only people with an invite code can chat; the most complete block there is)</span>
+  <table class="m" id="blocks"></table>
+  <p class="dim">Setting a member to Blocked puts the devices and IPs they used on the blocklist (IPs expire after 90 days so a shared network is not punished); the owner passphrase is never blocked.</p></div></details>
+<details open><summary>Members and invite codes<span class="dim"> Admin and User are planned; today a code can only mark someone Blocked</span><span class="dim" id="mcount"></span></summary><div style="padding:8px 12px">
+  <div><input id="mname" type="text" placeholder="name, e.g. Tomás"> <select id="mtier"></select> <button id="madd">Create invite code</button></div>
+  <div id="newcode"></div><table class="m" id="members"></table>
+  <p class="dim">They type <code>/unlock &lt;code&gt;</code> in the chat to get their tier; tier changes, blocks and deletions apply at once. Guests need no code.</p></div></details>
+</div><div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s);let S=null,policy={},initial='';
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const COLS=['owner','admin','user','guest','blocked'],CFG=['admin','user','guest'];
+const planned=t=>(S.planned||[]).includes(t);
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',3000);}
+async function api(path,body){const r=await fetch(path,body?{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{});
+  if(r.status===403){location.href='/';throw 0;}if(!r.ok){toast('Failed: '+r.status);throw 0;}return r.json();}
+async function load(j){S=j||await api('/api/perm');policy={};for(const t of CFG)policy[t]=new Set(S.policy[t]);initial=snap();draw();}
+const snap=()=>CFG.map(t=>[...policy[t]].sort().join()).join('|');
+function draw(){
+  $('#files').innerHTML='Policy file: <b>'+esc(S.policy_file)+'</b><br>'+CFG.map(t=>{const p=S.profiles[t];
+    const a=(S.audit||{})[t]||[];const iso=!p.deployed?'':a.length?`<div class="lk">⚠ Isolation check failed:<br>${a.map(esc).join('<br>')}<br>Save &amp; sync fixes the config; context files must be moved by hand</div>`:'<span class="ok">isolation check passed</span>';
+    return `${esc(S.labels[t])} → profile <b>${esc(p.name)}</b> <span class="${p.deployed?'ok':'lk'}">${p.deployed?'deployed':'not deployed'}</span> <span class="dim">${esc(p.home)}</span> ${iso}`}).join('<br>');
+  $('#gaccess').checked=!!S.guest_access;
+  $('#blocks').innerHTML=(S.blocklist||[]).length?'<tr><th>Kind</th><th>Value</th><th>Member</th><th>Until</th><th></th></tr>'+S.blocklist.map(b=>
+    `<tr><td>${b.kind==='ip'?'IP':'device'}</td><td class="dim">${esc(b.value)}</td><td>${esc(b.name)}</td><td class="dim">${new Date(b.until*1000).toLocaleDateString()}</td>
+    <td><button data-ub="${esc(b.kind)}" data-v="${esc(b.value)}">Unblock</button></td></tr>`).join(''):'<tr><td class="dim">Blocklist is empty</td></tr>';
+  let h='<tr><th>Toolset</th>'+COLS.map(c=>`<th class="c${planned(c)?' dim':''}">${esc(S.labels[c])}${planned(c)?'<div style="font-size:11px">planned</div>':''}</th>`).join('')+'</tr>',cat='';
+  for(const r of S.catalog){if(r.category!==cat){cat=r.category;h+=`<tr class="cat"><td colspan="6">${esc(cat)}</td></tr>`;}
+    h+=`<tr><td>${esc(r.label)}<div class="dim" style="font-size:12px">${r.tools.map(esc).join(', ')}</div>`+
+      (r.locked?`<div class="lk">🔒 ${esc(r.locked)}</div>`:r.warn?`<div class="wn">⚠ ${esc(r.warn)}</div>`:'')+'</td>'+
+      '<td class="c ok">✓</td>'+CFG.map(t=>r.locked?'<td class="c lk">🔒</td>':planned(t)?'<td class="c dim" title="planned">–</td>':
+        `<td class="c"><input type="checkbox" data-t="${t}" data-id="${r.id}" ${policy[t].has(r.id)?'checked':''}></td>`).join('')+
+      '<td class="c no">✗</td></tr>';}
+  $('#matrix').innerHTML=h;
+  $('#mtier').innerHTML=COLS.slice(1).map(t=>`<option value="${t}" ${planned(t)?'disabled':''} ${t==='blocked'?'selected':''}>${esc(S.labels[t])}${planned(t)?' (planned)':''}</option>`).join('');
+  $('#mcount').textContent=S.members.length+(S.members.length===1?' member':' members');
+  $('#members').innerHTML=S.members.length?'<tr><th>Name</th><th>Tier</th><th>Created</th><th></th></tr>'+S.members.map(m=>
+    `<tr><td>${esc(m.name)}</td><td><select data-m="${m.id}">${COLS.slice(1).map(t=>`<option value="${t}" ${t===m.tier?'selected':''} ${planned(t)&&t!==m.tier?'disabled':''}>${esc(S.labels[t])}${planned(t)?' (planned)':''}</option>`).join('')}</select></td>
+    <td class="dim">${new Date(m.created*1000).toLocaleString()}</td><td><button data-del="${m.id}">Delete</button></td></tr>`).join(''):'<tr><td class="dim">No members yet</td></tr>';
+  $('#save').disabled=snap()===initial;}
+document.addEventListener('change',async e=>{const t=e.target;
+  if(t.dataset.t){t.checked?policy[t.dataset.t].add(t.dataset.id):policy[t.dataset.t].delete(t.dataset.id);$('#save').disabled=snap()===initial;}
+  if(t.id==='gaccess'){S=await api('/api/perm/access',{action:'guest_access',enabled:t.checked});toast(t.checked?'Guests may chat':'Guests closed; invite codes only');draw();}
+  if(t.dataset.m){S=await api('/api/perm/members',{action:'update',id:t.dataset.m,tier:t.value});toast('Now '+S.labels[t.value]+', effective at once');draw();}});
+document.addEventListener('click',async e=>{const ub=e.target.dataset.ub;
+  if(ub){S=await api('/api/perm/access',{action:'unblock',kind:ub,value:e.target.dataset.v});toast('Unblocked');draw();return;}
+  const id=e.target.dataset.del;if(!id||!confirm('Delete this member? Their invite code stops working at once.'))return;
+  S=await api('/api/perm/members',{action:'delete',id});draw();});
+$('#madd').onclick=async()=>{const j=await api('/api/perm/members',{action:'add',name:$('#mname').value,tier:$('#mtier').value});
+  $('#newcode').innerHTML=`Invite code for <b>${esc(j.added.name)}</b> (${esc(j.labels[j.added.tier])}), shown once:<br><span class="code">${esc(j.code)}</span>`;
+  $('#mname').value='';S=j;draw();};
+$('#save').onclick=async()=>{const j=await api('/api/perm/save',{tiers:Object.fromEntries(CFG.map(t=>[t,[...policy[t]]]))});
+  toast('Synced to: '+Object.keys(j.synced).map(t=>j.labels[t]).join(', ')+'. New sessions use it.');load(j);};
+load();
+fetch('/api/me').then(r=>r.json()).then(j=>{if(!j.readonly)return;document.body.classList.add('ro');const n=document.createElement('div');n.className='robar';n.textContent='READ ONLY · you see what Lena sees; saving, drafting and publishing are off';document.body.prepend(n);}).catch(()=>{});
+</script></body></html>

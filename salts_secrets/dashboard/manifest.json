@@ -1,0 +1,14 @@
+{
+  "name": "salts-secrets",
+  "label": "Salt's Secrets",
+  "description": "Decide what strangers may know, which tools they get, and check that the guest side is isolated",
+  "icon": "Shield",
+  "version": "0.3.0",
+  "tab": {
+    "path": "/salts-secrets",
+    "position": "after:skills"
+  },
+  "entry": "dist/index.js",
+  "css": "dist/style.css",
+  "api": "plugin_api.py"
+}

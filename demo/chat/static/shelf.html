@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Two Sessions · Hermes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Antonio:wght@300;400;500&family=JetBrains+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;1,400&display=swap">
+<style>
+:root{--paper:#f2f2f2;--sheet:#fdfdfd;--ink:#000091;--muted:#6b6bd6;--blue:#0000f2;--navy:#0d0d24;--frame:#7f7fff;--rule:rgba(0,0,242,.85);--hair:rgba(0,0,242,.18);--ease:cubic-bezier(.2,.8,.2,1);
+--sans:"Inter Tight",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,monospace;--disp:"Antonio",Impact,sans-serif;--serif:"EB Garamond",Georgia,serif}
+*{box-sizing:border-box}html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+body.locked{overflow:hidden}
+.grain{position:fixed;inset:0;z-index:40;pointer-events:none;opacity:.10;background:radial-gradient(circle at 50% 50%,rgba(0,0,242,.35) 0 .5px,transparent 1px) 0 0/4px 4px}
+.grain::after{content:"";position:absolute;inset:0;border:6px solid var(--frame);box-shadow:inset 0 0 0 1px rgba(0,0,242,.25)}
+.lbl{font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase}
+.box{display:inline-flex;align-items:center;height:21px;padding:0 8px;border:1px solid var(--rule)}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+/* top bar */
+.top{position:sticky;top:0;height:64px;padding:0 36px;display:flex;align-items:center;justify-content:space-between;color:var(--blue);z-index:30;background:var(--paper);border-bottom:1px solid var(--hair)}
+.top .l,.top .r{display:flex;align-items:center;gap:16px}.top .r{gap:26px}
+.top .line{width:40px;height:1px;background:currentColor}
+.top input{font:400 11.5px/1 var(--mono);letter-spacing:.06em;color:var(--ink);background:var(--sheet);border:1px solid var(--blue);padding:6px 10px;width:240px;outline:0}
+.top input::placeholder{color:var(--muted)}
+/* hero */
+.hero{padding:54px 36px 30px;max-width:1400px;margin:0 auto}
+.hero .eyebrow{color:var(--blue);display:flex;gap:14px;align-items:center}
+.hero h1{margin:14px 0 18px;font:400 clamp(64px,9.5vw,150px)/.88 var(--disp);letter-spacing:.005em;text-transform:uppercase;color:var(--blue)}
+.hero .lede{font:400 19px/1.45 var(--serif);max-width:66ch;color:var(--ink)}
+.hero .lede b{font-weight:400;color:var(--blue);border-bottom:1px solid var(--blue)}
+/* grid */
+.wrap{max-width:1400px;margin:0 auto;padding:10px 36px 90px}
+.g{display:grid;grid-template-columns:minmax(0,1fr) 230px minmax(0,1fr);gap:0 22px;align-items:stretch}
+.heads{position:sticky;top:64px;z-index:20;background:var(--paper);padding:14px 0 10px;border-bottom:1px solid var(--blue)}
+.heads .ses .who{font:400 34px/1 var(--disp);text-transform:uppercase;color:var(--blue);letter-spacing:.01em}
+.heads .ses .meta{margin-top:6px;font:400 10.5px/1.5 var(--mono);color:var(--muted);letter-spacing:.04em;overflow-wrap:anywhere}
+.heads .ses.guest{text-align:right}
+.heads .mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center}
+.heads .mid .lbl{color:var(--blue)}
+.heads .mid .arrow{font:400 22px/1 var(--mono);color:var(--blue)}
+.row{display:contents}
+.rail{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;text-align:center;padding:18px 0}
+.rail::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--hair);z-index:0}
+.rail>*{position:relative;z-index:1;background:var(--paper)}
+.rail .name{font:400 26px/1 var(--disp);text-transform:uppercase;color:var(--blue);letter-spacing:.01em;padding:2px 8px}
+.rail .mode{color:var(--blue);padding:0 8px}
+.rail .mode.every{background:var(--blue);color:#fff;border-color:var(--blue)}
+.rail .cnt{font:400 10.5px/1 var(--mono);color:var(--muted);padding:2px 8px;letter-spacing:.04em}
+.rail .step{font:400 10px/1 var(--mono);color:var(--muted);letter-spacing:.14em;padding:0 8px}
+.cell{position:relative;border:1px solid var(--blue);background:var(--sheet);padding:16px 18px 18px;margin:12px 0;min-height:132px;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.cell.clk{cursor:pointer;transition:transform .35s var(--ease),box-shadow .35s var(--ease),opacity .3s}
+.cell.clk:hover{transform:translateY(-2px);box-shadow:0 18px 40px -22px rgba(0,0,120,.55)}
+.row.dim .cell{opacity:.35}
+.cell .k{font:500 9.5px/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--blue);display:flex;justify-content:space-between;gap:10px}
+.cell .k .tag{border:1px solid currentColor;padding:2px 5px 1px}
+.cell .k .tag.hit{background:var(--blue);color:#fff;border-color:var(--blue)}
+.cell .h{font:400 30px/1 var(--disp);text-transform:uppercase;color:var(--blue);letter-spacing:.01em;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.cell .h small{font:400 11px/1 var(--mono);letter-spacing:.06em;color:var(--muted);text-transform:none}
+.cell .how{font:400 10.5px/1.5 var(--mono);color:var(--muted);letter-spacing:.03em}
+.cell .sample{font:400 14.5px/1.4 var(--serif);color:var(--ink);margin-top:2px}
+.cell .sample div{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.cell .sample div::before{content:"· ";color:var(--blue)}
+.cell .tools{display:flex;flex-wrap:wrap;gap:4px 6px;margin-top:2px}
+.cell .tools span{font:400 10.5px/1 var(--mono);border:1px solid var(--hair);padding:3px 6px;color:var(--ink)}
+.cell .tools span.off{color:var(--muted);border-style:dashed;opacity:.55;text-decoration:line-through}
+.cell.none{border:1px dashed rgba(0,0,242,.4);background:transparent;justify-content:center;align-items:center;text-align:center;color:var(--muted);cursor:default}
+.cell.none::before{content:"";position:absolute;inset:0;background:radial-gradient(circle,rgba(0,0,242,.35) 0 .6px,transparent 1.1px) 0 0/4px 4px;opacity:.5}
+.cell.none .k{justify-content:center;color:var(--muted)}
+.cell.none .why{font:italic 400 14px/1.4 var(--serif);color:var(--muted);max-width:32ch;position:relative}
+.cell.cross{background:var(--blue);color:#fff;border-color:var(--blue)}
+.cell.cross .k,.cell.cross .h,.cell.cross .sample,.cell.cross .how{color:#fff}
+.cell.cross .how{opacity:.75}.cell.cross .sample div::before{color:#fff}
+.cell.cross::after{content:"";position:absolute;right:-10px;bottom:-10px;width:30%;height:45%;background:radial-gradient(circle,#fdfdfd 0 .8px,transparent 1.4px) 0 0/4px 4px;-webkit-mask-image:linear-gradient(200deg,#000 20%,transparent 80%);mask-image:linear-gradient(200deg,#000 20%,transparent 80%);pointer-events:none;opacity:.6}
+.cell.own{background:#e6e6f4}
+/* guests */
+.guests{margin-top:26px;border-top:1px solid var(--blue);padding-top:16px}
+.guests .gh{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
+.gs{border:1px dashed var(--muted);padding:10px 12px;margin-bottom:10px}
+.gs .gm{font:400 11px/1 var(--mono);color:var(--muted);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase}
+.gs .gq{font:400 14px/1.5 var(--serif);margin:2px 0}
+.gs .gq.probe::before{content:"PROBE";font:400 10px/1 var(--mono);color:#fff;background:var(--blue);padding:2px 4px;margin-right:8px;letter-spacing:.08em}
+.gs .gr{font:400 11px/1.5 var(--mono);color:var(--blue);letter-spacing:.04em;margin-top:4px}
+.gs .ga{color:var(--muted);font-size:13px;margin:0 0 6px 16px;white-space:pre-wrap}
+.guests .empty{font:400 13px/1.5 var(--serif);color:var(--muted)}
+/* tally */
+.tally{margin-top:26px;border-top:1px solid var(--blue);padding-top:16px;display:grid;grid-template-columns:minmax(0,1fr) 230px minmax(0,1fr);gap:22px;align-items:start}
+.tally .big{font:400 clamp(44px,5vw,78px)/1 var(--disp);color:var(--blue);text-transform:uppercase}
+.tally .big small{font:400 11px/1 var(--mono);letter-spacing:.1em;display:block;margin-top:8px;color:var(--muted);text-transform:uppercase}
+.tally .r{text-align:right}
+.tally .mid{text-align:center;font:400 13px/1.5 var(--serif);color:var(--ink);padding-top:6px}
+.foot{display:flex;justify-content:space-between;color:var(--blue);padding:40px 0 0}
+@media (max-width:900px){.g,.tally{grid-template-columns:1fr}.heads .ses.guest{text-align:left}.heads{position:static}.rail{padding:8px 0}.rail::before{display:none}.cell{margin:6px 0}.tally .r{text-align:left}.top{padding:0 16px}.hero,.wrap{padding-left:16px;padding-right:16px}.top input{width:140px}}
+/* ---------- detail: the same three columns, one entry per row ---------- */
+.detail{position:fixed;inset:0;background:var(--sheet);z-index:60;display:none;flex-direction:column;clip-path:inset(0 round 0)}
+.detail.show{display:flex}
+.detail .dtop{flex:none;height:64px;padding:0 36px;display:flex;align-items:center;justify-content:space-between;color:var(--blue);border-bottom:1px solid var(--hair)}
+.detail .close{color:var(--blue)}
+.detail .dhead{flex:none;padding:22px 36px 14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:end;border-bottom:1px solid var(--blue)}
+.detail .ti{font:400 clamp(44px,5.4vw,84px)/.92 var(--disp);letter-spacing:0;text-transform:uppercase;color:var(--blue);overflow-wrap:anywhere;margin:6px 0 10px}
+.detail .su{color:var(--blue)}
+.detail .desc{font:400 15px/1.5 var(--serif);color:var(--ink);max-width:80ch}
+.detail .counts{display:flex;gap:18px;font:400 11px/1.4 var(--mono);letter-spacing:.06em;color:var(--muted);margin-top:8px;flex-wrap:wrap}
+.detail .counts b{color:var(--blue);font-weight:600}
+.detail .acts{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.detail button.act{height:40px;padding:0 16px;border:1px solid var(--blue);background:#e6e6f4;color:var(--blue);font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;border-radius:0}
+.detail button.act.on,.detail button.act.primary{background:var(--blue);color:#fff}
+.detail button.act:disabled{opacity:.4;cursor:default}
+.detail .cols{flex:none;display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:0 16px;padding:10px 36px 6px;color:var(--blue);background:var(--sheet)}
+.detail .cols .r{text-align:right}
+.detail .list{flex:1;min-height:0;overflow:auto;padding:0 36px 60px;user-select:text}
+.dl{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:0 16px;align-items:stretch}
+.dl .ch{grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:16px 0 6px;position:sticky;top:0;background:var(--sheet);z-index:2;border-bottom:1px solid var(--hair)}
+.dl .ch .lbl{color:var(--blue)}.dl .ch .n{font:400 10.5px/1 var(--mono);color:var(--muted);letter-spacing:.04em}
+.dl .ch button{margin-left:auto;font:500 10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--blue);border:1px solid var(--blue);padding:5px 8px}
+.ent{display:contents}
+.ent>div{padding:12px 0 14px;border-bottom:1px solid var(--hair);min-width:0}
+.ent .orig{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;align-items:start}
+.ent .orig input{width:16px;height:16px;margin-top:2px;accent-color:var(--blue)}
+.ent .t{font:500 14px/1.4 var(--sans);color:var(--ink);overflow-wrap:anywhere}
+.ent .path{font:400 10px/1.5 var(--mono);color:var(--muted);letter-spacing:.02em;overflow-wrap:anywhere;margin-top:2px}
+.ent .st{display:inline-block;font:500 9px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border:1px solid currentColor;padding:2px 5px 1px;margin-left:8px;vertical-align:1px}
+.ent .st.public{color:var(--blue)}.ent .st.locked{color:#b91c1c}.ent .st.changed{color:#b45309}
+.ent pre.raw{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font:400 12.5px/1.5 var(--mono);color:var(--ink);background:#fff;border:1px solid var(--hair);padding:10px;overflow:hidden}
+.ent pre.raw.full{max-height:none}
+.ent pre.raw.wait{color:var(--muted);font-style:italic}
+.ent .more{font:500 9.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-top:6px}
+.ent .arr{display:flex;align-items:center;justify-content:center;font:400 20px/1 var(--mono);color:var(--blue)}
+.ent .arr.off{color:var(--hair)}
+.ent .gst{position:relative}
+.ent .gst .k{font:500 9px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--blue);display:flex;justify-content:space-between;gap:10px;align-items:center}
+.ent .gst .k button{font:500 9px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--blue);border:1px solid var(--blue);padding:3px 6px}
+.ent .gst textarea{display:block;width:100%;margin-top:8px;min-height:64px;font:400 12.5px/1.5 var(--mono);color:#fff;background:var(--blue);border:1px solid var(--blue);padding:10px;resize:none;overflow:hidden;border-radius:0;outline:0}
+.ent .gst .ghost{margin-top:2px;min-height:96px;height:calc(100% - 2px);border:1px dashed rgba(0,0,242,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;color:var(--muted);padding:14px;position:relative}
+.ent .gst .ghost::before{content:"";position:absolute;inset:0;background:radial-gradient(circle,rgba(0,0,242,.35) 0 .6px,transparent 1.1px) 0 0/4px 4px;opacity:.5}
+.ent .gst .ghost>*{position:relative}
+.ent .gst .ghost .why{font:italic 400 13px/1.4 var(--serif);max-width:36ch}
+.ent .gst .ghost pre{margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font:400 11.5px/1.5 var(--mono);color:var(--muted);text-decoration:line-through;max-height:120px;overflow:auto;width:100%;text-align:left}
+.ent .gst .ghost .st{margin:0}
+.dl .pager{grid-column:1/-1;padding:14px 0;text-align:center}
+.dl .pager button{font:500 10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--blue);border:1px solid var(--blue);padding:8px 14px}
+.dl .empty{grid-column:1/-1;padding:30px 0;font:italic 400 15px/1.4 var(--serif);color:var(--muted)}
+/* guest prompt view */
+.gview{display:none;padding:14px 36px 60px;overflow:auto;flex:1;min-height:0}
+.detail.asguest .gview{display:block}.detail.asguest .list,.detail.asguest .cols{display:none}
+.gview .note{font:400 13px/1.5 var(--serif);color:var(--muted);max-width:80ch;margin:0 0 12px}
+.gview pre{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font:400 12.5px/1.55 var(--mono);color:#fff;background:var(--blue);padding:16px;border:1px solid var(--blue)}
+.gview h4{font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--blue);margin:22px 0 8px}
+.gview pre.doc{color:var(--ink);background:#fff;border:1px solid var(--hair)}
+@media (max-width:900px){.detail .dtop,.detail .dhead,.detail .cols,.detail .list,.gview{padding-left:16px;padding-right:16px}.detail .dhead{grid-template-columns:1fr}.dl,.detail .cols{grid-template-columns:1fr}.ent .arr,.detail .cols .m{display:none}}
+.ent mark{background:#ffd9d9;color:#8b1515;padding:0 2px}
+.flags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.flags span{font:500 9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;border:1px solid #b91c1c;color:#b91c1c;padding:3px 5px;background:#fff}
+.flags span.ok{border-color:#047857;color:#047857}
+.ent .gst .k>span:last-child{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.ent .gst .k label{display:inline-flex;align-items:center;gap:4px;cursor:pointer;font:500 9px/1 var(--mono);letter-spacing:.1em}
+.ent .gst .k input{width:12px;height:12px;margin:0;accent-color:var(--blue)}
+.ent .gst textarea.same{box-shadow:inset 0 0 0 2px #ff8c8c}
+.ent .gst .warn{font:500 9.5px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#b91c1c;margin-top:6px}
+.detail .cost{font:400 10.5px/1.4 var(--mono);color:var(--muted);letter-spacing:.04em;text-align:right;margin-top:8px}
+.pol{position:fixed;inset:0;background:rgba(0,0,120,.35);z-index:65;display:none;align-items:center;justify-content:center;padding:20px}
+.pol.show{display:flex}
+.pol .panel{background:var(--sheet);border:1px solid var(--blue);width:min(94vw,860px);max-height:90vh;display:flex;flex-direction:column;gap:12px;padding:20px;box-shadow:0 30px 80px -30px rgba(0,0,120,.6)}
+.pol .k{display:flex;justify-content:space-between;align-items:center;color:var(--blue);gap:12px}.pol .k .lbl.box{color:var(--blue)}
+.pol .note{margin:0;font:400 14px/1.5 var(--serif);color:var(--ink)}.pol .note span{font:400 11px/1 var(--mono);color:var(--muted)}
+.pol textarea{flex:1;min-height:360px;font:400 12.5px/1.55 var(--mono);color:var(--ink);background:#fff;border:1px solid var(--blue);padding:12px;resize:vertical;outline:0;border-radius:0}
+.pol .acts{display:flex;justify-content:flex-end}.pol button.act{height:40px;padding:0 16px;border:1px solid var(--blue);background:var(--blue);color:#fff;font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;border-radius:0}
+.sbox{position:relative;display:inline-block}
+.sr{position:absolute;top:36px;left:0;width:min(90vw,640px);max-height:60vh;overflow:auto;background:var(--sheet);border:1px solid var(--blue);z-index:35;display:none;text-align:left;box-shadow:0 24px 60px -30px rgba(0,0,120,.5)}
+.sr.show{display:block}
+.sr div{padding:8px 12px;border-bottom:1px solid var(--hair);cursor:pointer;font:400 12.5px/1.4 var(--sans);color:var(--ink);display:flex;gap:10px;align-items:baseline}
+.sr div b{font:500 9.5px/1 var(--mono);letter-spacing:.12em;color:var(--blue);text-transform:uppercase;flex:none;min-width:76px}
+.sr div span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sr div:hover{background:#e6e6f4}.sr .more{justify-content:center;color:var(--muted);cursor:default;font:400 10.5px/1 var(--mono);letter-spacing:.08em}
+.hero .eyebrow button.box{color:var(--blue);height:21px;cursor:pointer}
+#toast{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;padding:6px 14px;font:400 12px/1.4 var(--mono);display:none;z-index:70}
+.triage{border:1px solid var(--blue);background:var(--sheet);padding:14px 16px;margin:18px 0}
+.triage .tl{display:flex;justify-content:space-between;color:var(--blue);gap:12px;flex-wrap:wrap}
+.triage .tb{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.triage button.act{height:34px;padding:0 12px;border:1px solid var(--blue);background:#fff;color:var(--blue);font:500 10px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;border-radius:0;cursor:pointer}
+.triage button.act.primary{background:var(--blue);color:#fff}.triage button:disabled{opacity:.4;cursor:default}
+.triage .warn{margin-top:8px;font:500 10px/1.4 var(--mono);letter-spacing:.06em;color:#b91c1c;text-transform:uppercase}
+.triage .tnote{margin-top:8px;font:400 12.5px/1.45 var(--serif);color:var(--muted)}
+.tier{margin-top:6px;font:400 11.5px/1.45 var(--sans);color:var(--muted)}
+.tier b{font:500 9.5px/1 var(--mono);letter-spacing:.1em;padding:3px 5px;border:1px solid;margin-right:4px;background:#fff}
+.tier.tA b{color:#047857}.tier.tB b{color:#b45309}.tier.tC b{color:#b91c1c}
+.tier .rh{font:400 10px/1.4 var(--mono);color:#b91c1c}.tier .via{font:400 10px/1 var(--mono);color:var(--blue);margin-left:4px}
+.robar{position:sticky;top:0;z-index:20;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:8px 14px;text-align:center}
+.ro #d-save,.ro #t-save,.ro #pol-save,.ro .draft,.ro .mic,.ro [data-bulk]{display:none!important}
+.ro input[type=checkbox],.ro textarea{pointer-events:none;opacity:.6}
+.ent .gst .mic.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
+</style></head><body>
+<div class="grain"></div>
+<div class="top"><div class="l"><span class="lbl">LENA MOREAU</span><span class="line"></span><span class="lbl">CONTEXT</span></div>
+  <div class="r"><span class="sbox"><input id="q" type="search" placeholder="SEARCH HER 3,800 ENTRIES…" autocomplete="off"><div class="sr" id="sr"></div></span><a class="lbl" href="/">CHAT</a><a class="lbl" href="/perm">PERMISSIONS</a><a class="lbl" href="/trace">TRACE</a><a class="lbl" href="/doc">DOC</a><span class="lbl" id="count"></span></div></div>
+
+<section class="hero">
+  <div class="eyebrow"><span class="lbl">WHAT EACH SESSION IS BUILT FROM</span><span class="line" style="width:40px;height:1px;background:currentColor"></span><span class="lbl" id="hero-n"></span><span class="line" style="width:40px;height:1px;background:currentColor"></span><button class="lbl box" id="pol-open">WHAT MAY BE SHARED · EDIT</button></div>
+  <h1>One Hermes,<br>two minds</h1>
+  <p class="lede">Every turn, Hermes assembles its prompt from the sources below, top to bottom. <b>Lena's session</b> is built from all of them. <b>Salt's assistant</b>, the session strangers reach, is built from nothing of hers except what she ticked here. Nothing in between is a rule the model has to obey; it simply is not there.</p>
+</section>
+
+<div class="wrap">
+  <div class="g heads">
+    <div class="ses owner"><div class="who">Lena's Hermes</div><div class="meta" id="m-owner">owner profile · unlocked with the passphrase</div></div>
+    <div class="mid"><span class="lbl">TICKED HERE</span><span class="arrow">→</span><span class="lbl" id="m-cross"></span></div>
+    <div class="ses guest"><div class="who">Salt's assistant</div><div class="meta" id="m-guest">public profile · everyone who is not Lena</div></div>
+  </div>
+  <div class="triage" id="triage"></div>
+  <div class="g" id="rows"></div>
+  <div class="tally" id="tally"></div>
+  <div class="guests" id="guests"><div class="gh"><span class="lbl">WHAT GUESTS ASKED · LENA ONLY · READ FROM THE PUBLIC STORE, NEVER ENTERS A SESSION</span><span class="lbl" id="g-count"></span></div><div id="g-rows"></div></div>
+  <div class="foot"><span class="lbl">PRIVATE BY DEFAULT · ONLY TICKED ENTRIES CROSS</span><span class="lbl">CLICK A BLOCK TO OPEN IT · ESC CLOSE</span></div>
+</div>
+
+<div class="detail" id="detail">
+  <div class="dtop"><button class="lbl box close" id="close">CLOSE</button><span class="lbl">LENA MOREAU —— TWO SESSIONS</span></div>
+  <div class="dhead">
+    <div><span class="lbl su" id="d-su"></span><div class="ti" id="d-ti"></div><div class="desc" id="d-desc"></div><div class="counts" id="d-counts"></div></div>
+    <div><div class="acts"><button class="act" id="d-guest">View as guest</button><button class="act primary" id="d-save" disabled>Save &amp; sync</button></div><div class="cost" id="d-cost"></div></div>
+  </div>
+  <div class="cols"><span class="lbl">LENA'S SESSION · RAW ORIGINAL · ABSOLUTE PATH</span><span class="lbl m"></span><span class="lbl r">SALT'S ASSISTANT · RAW GUEST VERSION</span></div>
+  <div class="list" id="d-list"></div>
+  <div class="gview" id="gview"></div>
+</div>
+<div class="pol" id="pol"><div class="panel"><div class="k"><span class="lbl">WHAT MAY BE SHARED · THE DRAFTER READS THIS EVERY TIME</span><button class="lbl box" id="pol-close">CLOSE</button></div><p class="note">Plain markdown. Two lists: what is fine to share about Salt, and what must never cross. Every draft Hermes writes for a guest follows this file; edit it and the next draft changes. Stored at <span id="pol-path"></span>.</p><textarea id="pol-text" spellcheck="false"></textarea><div class="acts"><button class="act primary" id="pol-save">Save policy</button></div></div></div>
+<div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+const fmt=n=>n.toLocaleString('en-US');
+// Sources in the order Hermes assembles a session. `guest` says how the public profile relates to each one.
+const SOURCES=[
+ {id:'soul',name:'SOUL.md',step:'01',mode:'every',modeText:'EVERY TURN',match:g=>g==='Persona · SOUL.md',
+  owner:'system prompt · her persona file',guest:{state:'own',how:'its own SOUL.md: "You are Salt\'s assistant"'},
+  desc:'The persona file. The guest profile has its own copy; this is the owner\'s. Hermes appended its own privacy rules at the end.'},
+ {id:'memory',name:'MEMORY.md',step:'02',mode:'every',modeText:'EVERY TURN',match:g=>g==='Memory · MEMORY.md',fact:true,
+  owner:'notes Hermes keeps for itself · capped at 2,200 chars',guest:{state:'none',why:'memory is switched off in the public profile; a ticked note would arrive as a fact under "Notes about Salt"'},
+  desc:'Notes Hermes writes for itself, capped at 2,200 characters and injected at the start of every session, cron jobs and sub-agents included. So it keeps only rules and pointers here, never passwords or numbers.'},
+ {id:'user',name:'USER.md',step:'03',mode:'every',modeText:'EVERY TURN',match:g=>g==='Memory · USER.md',fact:true,
+  owner:'its picture of her · capped at 1,375 chars',guest:{state:'none',why:'user profile is switched off in the public profile; a ticked line would arrive as a fact'},
+  desc:'Hermes\'s picture of its owner: who she is, how to address her, her rhythm, her preferences. Capped at 1,375 characters, injected every turn.'},
+ {id:'public',name:'Published',step:'04',mode:'demand',modeText:'TITLES EVERY TURN',match:g=>g.endsWith('· public'),asis:true,
+  owner:'workspace/public · readable with read_file',guest:{state:'cross',how:'"Notes about Salt" lists every title each turn · bodies via public_notes_lookup'},
+  desc:'Salt\'s Low Tide archive and posts, split by paragraph. This whole source is flipped to guests, who query it through public_notes_lookup.'},
+ {id:'tools',name:'Tools',step:'05',mode:'every',modeText:'SCHEMAS EVERY TURN',tools:true,
+  owner:'every toolset · terminal, files, browser, sessions',guest:{state:'tools',how:'only the guest tier\'s toolsets, none of which can reach her machine'},
+  desc:'What each session is allowed to call. The guest list is the permission board\'s guest tier; everything that can read a file, run a command or see her sessions is missing from it.'},
+ {id:'skills',name:'Skills',step:'06',mode:'use',modeText:'ON USE',match:g=>g==='Skills',
+  owner:'her methods as skills · loaded when invoked',guest:{state:'cross',how:'public versions of her methods · the guest fetches them with public_notes_lookup',why:'none of her methods has a public version yet; tick one and Hermes drafts it, her private operating notes stripped'},
+  desc:'Each skill is a reusable method: what to check, in what order, with what thresholds. Hers live under skills/lowtide. The private version carries her accounts, paths and unpublished thresholds; the public version keeps the method and drops the rest.'},
+ {id:'workspace',name:'Workspace',step:'07',mode:'demand',modeText:'ON DEMAND',match:g=>g.startsWith('Workspace ·')&&!g.endsWith('· public'),chapter:g=>g.split(' · ').pop(),
+  owner:'journal, budget, letters · read_file whenever it needs them',guest:{state:'none',why:'no read_file tool, so no path leads here'},
+  desc:'The directory she works in: journal, memoir, budget, contacts, decisions, family letters, hackathon plan. Not injected automatically, but readable any time the read_file tool exists; guests do not have that tool.'},
+ {id:'private',name:'Private',step:'08',mode:'demand',modeText:'ONLY WHEN ASKED',match:g=>g==='Data dir · private',
+  owner:'behind the door · one section at a time, only when she asks',guest:{state:'none',why:'no tool reaches the data directory'},
+  desc:'The "behind the door" directory Hermes invented for itself: passwords, accounts, wallets, relationships, health, threatening emails. Never injected; only the relevant section is read when she herself asks. Must never appear on the public side.'},
+ {id:'sessions',name:'Sessions',step:'09',mode:'demand',modeText:'VIA SESSION_SEARCH',match:g=>g.startsWith('Sessions ·'),locked:true,
+  owner:'every past conversation · session_search',guest:{state:'own',how:'its own state.db, holding only guest conversations'},
+  desc:'Every chat transcript in state.db; this is what session_search searches. Nothing here can be published; the guest profile has its own copy without the owner\'s sessions.'},
+ {id:'cron',name:'Cron',step:'10',mode:'never',modeText:'RUNS ON ITS OWN',match:g=>g.startsWith('Cron ·'),locked:true,
+  owner:'reminders that run as her, in their own sessions',guest:{state:'none',why:'no cronjob tool; nothing is scheduled for guests'},
+  desc:'Scheduled jobs. Each runs as her, in its own session, with her full context. Not publishable.'},
+ {id:'plugins',name:'Plugins',step:'11',mode:'every',modeText:'PROVIDER INJECTS',match:g=>g.startsWith('External memory'),locked:true,
+  owner:'external memory providers · allow-listed plugins only',guest:{state:'own',how:'one plugin: salts-secrets, which injects the notes above'},
+  desc:'What external memory providers and plugins can inject into context. Only allow-listed plugins are installed; not publishable.'},
+ {id:'runtime',name:'Runtime',step:'12',mode:'never',modeText:'NEVER IN CONTEXT',match:g=>g.startsWith('Data dir ·')&&g!=='Data dir · private',locked:true,
+  owner:'config, cache, logs, backups · not injected; logs are readable with read_file',guest:{state:'none',why:'no tool reaches the data directory'},
+  desc:'Config, cache, logs, backups, tool directories. Hermes never injects them, but logs can hold chat excerpts and the owner\'s file tools can read them. Not publishable.'},
+];
+const DEMO_ITEMS=[['Memory · MEMORY.md','Private records live in private/personal-records.md'],['Memory · MEMORY.md','@saltwater_sats is her anonymous account'],['Memory · USER.md','Lena, 31, product designer in Lisbon'],['Memory · USER.md','Call her Lena. No emojis.'],['Persona · SOUL.md','SOUL.md'],['Workspace · workspace · journal','2026-11-05.md'],['Workspace · workspace · family','letter-to-clara.md'],['Workspace · workspace · public','issue-06 › Harbor'],['Data dir · private','personal-records.md › Home network'],['Skills','weekly-review'],['Cron · cron','Reminder — 20 Dec 2026 09:00'],['Sessions · state.db','2026-11-07 · Token holdings lookup'],['External memory / plugins','Plugin: salts-secrets']];
+const DEMO_PERM={catalog:[{id:'web',tools:['web_search','web_extract']},{id:'vision',tools:['vision_analyze']},{id:'tts',tools:['text_to_speech']},{id:'clarify',tools:['clarify']},{id:'public_notes',tools:['public_notes_lookup']},{id:'memory',tools:['memory']},{id:'session_search',tools:['session_search']},{id:'file',tools:['read_file','write_file','patch','search_files']},{id:'terminal',tools:['terminal','process_manage']},{id:'browser',tools:['browser_exec','browser_cdp','browser_dialog','browser_vault']},{id:'cronjob',tools:['cronjob_manage']}],policy:{guest:['web','vision','tts','clarify','public_notes']}};
+const PAGE=50, AUTO_TEXT=60, FOLD=6000; const unfold=new Set();
+let items=[],byId={},texts={},drafts={},pub=new Set(),demo=false,perm=null,meta={},hits=null,initial='',asIs={},busy=new Set(),draftN=0,draftTok=0,nothingSafe=new Set(),cls={},via={},combo=null,rulesInfo={},autoRan=false;
+const snapshot=()=>[...pub].sort().map(id=>id+'='+(asIs[id]?'*':(drafts[id]||''))).join('\n');
+async function load(){
+  // Demo data only when asked for (?demo=1). Otherwise a locked session goes back to the chat window to unlock, instead of silently showing fake entries.
+  try{if(new URLSearchParams(location.search).get('demo'))throw 0;const r=await fetch('/api/board/items');if(r.status===403){location.href='/?locked=shelf';return;}if(!r.ok)throw 0;const j=await r.json();items=j.items;meta=j;pub=new Set();cls={};via={};
+    for(const it of items){if(it.classification)cls[it.id]=it.classification;if(it.status==='public')pub.add(it.id);if(it.public_text)drafts[it.id]=it.public_text;else if(it.status==='public')asIs[it.id]=true;}
+  }catch{demo=true;items=DEMO_ITEMS.map((d,i)=>({id:'demo'+i,group:d[0],title:d[1],kind:'x',source:d[0],path:'/demo/'+d[0].replace(/[^a-z]/gi,'_'),publishable:!/Sessions|plugins|Cron/.test(d[0]),status:/public/.test(d[0])?'public':'private'}));
+    items.forEach(it=>{texts[it.id]='(demo data) '+it.title;if(it.status==='public')pub.add(it.id);});}
+  byId=Object.fromEntries(items.map(i=>[i.id,i]));
+  if(!perm){try{const r=await fetch('/api/perm');if(!r.ok)throw 0;perm=await r.json();}catch{perm=DEMO_PERM;}}
+  for(const s of SOURCES){s.items=s.match?items.filter(it=>s.match(it.group)):[];if(s.id==='skills')s.items.sort((a,b)=>(b.kind==='skill')-(a.kind==='skill'));}
+  initial=snapshot();build();drawTriage();if(!demo&&!autoRan){autoRan=true;runClassify();}}
+const sPub=s=>s.items.filter(i=>pub.has(i.id)), sLock=s=>s.locked||(s.items.length>0&&s.items.every(i=>!i.publishable));
+const short=t=>esc(String(t).replace(/^.*› /,''));
+const sHits=s=>hits?s.items.filter(i=>hits.has(i.id)).length:0;
+function ownerCell(s){
+  if(s.tools){const all=perm.catalog.flatMap(c=>c.tools);
+    return `<div class="cell"><div class="k"><span>Lena's session</span><span class="tag">${perm.catalog.length} TOOLSETS</span></div><div class="h">${all.length} tools</div><div class="how">${esc(s.owner)}</div><div class="tools">${all.map(t=>`<span>${esc(t)}</span>`).join('')}</div></div>`;}
+  const n=s.items.length,np=sPub(s).length,lk=sLock(s),h=sHits(s);
+  const sample=s.items.slice(0,3).map(i=>`<div>${short(i.title)}</div>`).join('');
+  const tag=hits?`<span class="tag ${h?'hit':''}">${h} ${h===1?'HIT':'HITS'}</span>`:`<span class="tag">${lk?'LOCKED':np?`${np} TICKED`:'PRIVATE'}</span>`;
+  return `<div class="cell clk" data-s="${s.id}"><div class="k"><span>Lena's session</span>${tag}</div><div class="h">${fmt(n)} <small>${n===1?'entry':'entries'}</small></div><div class="how">${esc(s.owner)}</div><div class="sample">${sample}</div></div>`;}
+function guestCell(s){
+  const g=s.guest;
+  if(s.tools){const on=new Set(perm.policy.guest||[]);const allowed=perm.catalog.filter(c=>on.has(c.id)).flatMap(c=>c.tools),denied=perm.catalog.filter(c=>!on.has(c.id)).flatMap(c=>c.tools);
+    return `<div class="cell"><div class="k"><span>Salt's assistant</span><span class="tag">${on.size} TOOLSETS</span></div><div class="h">${allowed.length} tools</div><div class="how">${esc(g.how)}</div><div class="tools">${allowed.map(t=>`<span>${esc(t)}</span>`).join('')}${denied.map(t=>`<span class="off">${esc(t)}</span>`).join('')}</div></div>`;}
+  const np=sPub(s);
+  if(np.length){const sample=np.slice(0,3).map(i=>`<div>${short(drafts[i.id]||i.title)}</div>`).join('');
+    const how=s.fact?'arrives as a fact under "Notes about Salt", injected every turn':g.state==='cross'?g.how:'ticked here · reaches the guest as a document';
+    return `<div class="cell cross clk" data-s="${s.id}"><div class="k"><span>Salt's assistant</span><span class="tag">${np.length} CROSSED</span></div><div class="h">${fmt(np.length)} <small style="color:rgba(255,255,255,.75)">of ${fmt(s.items.length)} ${s.fact?'facts':'documents'}</small></div><div class="how">${esc(how)}</div><div class="sample">${sample}</div></div>`;}
+  if(g.state==='own')return `<div class="cell own"><div class="k"><span>Salt's assistant</span><span class="tag">ITS OWN COPY</span></div><div class="h">separate</div><div class="how">${esc(g.how)}</div></div>`;
+  return `<div class="cell none"><div class="k"><span>${g.state==='cross'?'NOTHING CROSSED YET':'NOT IN THIS SESSION'}</span></div><div class="why">${esc(g.why)}</div></div>`;}
+function build(){
+  const total=items.length,crossed=pub.size;
+  $('#count').textContent=`${fmt(total)} ENTRIES · ${fmt(crossed)} CROSS`;$('#hero-n').textContent=`${SOURCES.length} SOURCES`;
+  $('#m-cross').textContent=hits?`${fmt(hits.size)} SEARCH HITS`:`${fmt(crossed)} ENTRIES TICKED`;
+  if(meta.owner_home)$('#m-owner').textContent='owner profile · '+meta.owner_home;
+  if(meta.public_home)$('#m-guest').textContent='public profile · '+meta.public_home;
+  $('#rows').innerHTML=SOURCES.map(s=>`<div class="row ${hits&&s.match&&!sHits(s)?'dim':''}">${ownerCell(s)}<div class="rail"><span class="step">${s.step}</span><span class="name">${esc(s.name)}</span><span class="lbl box mode ${s.mode}">${s.modeText}</span>${s.match?`<span class="cnt">${fmt(s.items.length)} ${s.items.length===1?'ENTRY':'ENTRIES'}</span>`:''}</div>${guestCell(s)}</div>`).join('');
+  const facts=items.filter(i=>pub.has(i.id)&&/Memory · (MEMORY|USER)\.md/.test(i.group)).length,docs=crossed-facts;
+  $('#tally').innerHTML=`<div><div class="big">${fmt(total)}<small>entries in Lena's session</small></div></div><div class="mid">Of everything on the left, ${fmt(crossed)} ${crossed===1?'entry':'entries'} cross: ${fmt(facts)} as facts, ${fmt(docs)} as documents. The rest has no path into the session on the right.</div><div class="r"><div class="big">${fmt(crossed)}<small>entries reach Salt's assistant</small></div></div>`;}
+// ---------- search (server-side, over titles + bodies)
+let qTimer=null;
+$('#q').addEventListener('input',()=>{clearTimeout(qTimer);qTimer=setTimeout(search,250);});
+async function search(){const q=$('#q').value.trim();if(!q){hits=null;build();if(open)renderList();return;}
+  try{const j=await (await fetch('/api/board/search?q='+encodeURIComponent(q))).json();if(q!==$('#q').value.trim())return;hits=new Set(j.ids);}
+  catch{hits=new Set(items.filter(i=>(i.title+' '+(texts[i.id]||'')).toLowerCase().includes(q.toLowerCase())).map(i=>i.id));}
+  build();if(open)renderList();showResults();}
+function showResults(){const box=$('#sr');if(!hits||!$('#q').value.trim()){box.classList.remove('show');box.innerHTML='';return;}
+  const rows=[];for(const s of SOURCES){if(!s.match)continue;for(const it of s.items){if(hits.has(it.id))rows.push([s,it]);if(rows.length>=40)break;}if(rows.length>=40)break;}
+  box.innerHTML=(rows.map(([s,it])=>`<div data-s="${s.id}"><b>${esc(s.name)}</b><span>${short(it.title)}</span></div>`).join('')||'<div class="more">NOTHING MATCHES</div>')+(hits.size>rows.length?`<div class="more">${fmt(hits.size-rows.length)} MORE · OPEN A SOURCE TO SEE THEM ALL</div>`:'');
+  box.classList.add('show');}
+$('#sr').addEventListener('click',e=>{const d=e.target.closest('div[data-s]');if(!d)return;const s=SOURCES.find(x=>x.id===d.dataset.s);$('#sr').classList.remove('show');if(s&&!open)openDetail(s,null);});
+document.addEventListener('click',e=>{if(!e.target.closest('.sbox'))$('#sr').classList.remove('show');});
+$('#q').addEventListener('focus',()=>{if(hits)showResults();});
+// ---------- detail
+let cb=null,open=false,lastRect=null,pages={};
+async function text(id){if(texts[id]!==undefined)return texts[id];try{const r=await fetch('/api/board/text?id='+encodeURIComponent(id));texts[id]=r.ok?(await r.json()).text:'';}catch{texts[id]='';}return texts[id];}
+async function loadTexts(ids){const q=ids.filter(id=>texts[id]===undefined);await Promise.all(Array(6).fill(0).map(async()=>{while(q.length){const id=q.shift();await text(id);fillRaw(id);}}));}
+function fillRaw(id){const it=byId[id];if(!it)return;const row=document.querySelector(`.ent[data-id="${CSS.escape(id)}"]`);if(!row)return;
+  row.outerHTML=entHTML(it);fitAll();}
+function refreshCounts(){if(!cb)return;drawTriage();const np=sPub(cb).length,lk=cb.items.filter(i=>!i.publishable).length,ch=cb.items.filter(i=>i.status==='changed'&&!pub.has(i.id)).length;
+  $('#d-counts').innerHTML=`<span><b>${fmt(cb.items.length)}</b> entries</span><span><b>${np}</b> public</span><span><b>${fmt(cb.items.length-np-lk)}</b> private</span>`+(lk?`<span><b>${lk}</b> locked</span>`:'')+(ch?`<span style="color:#b45309"><b style="color:#b45309">${ch}</b> changed, dropped back</span>`:'')+(hits?`<span><b>${sHits(cb)}</b> search hits shown</span>`:'');
+  const blocked=cb.items.filter(i=>pub.has(i.id)&&!asIs[i.id]&&texts[i.id]!==undefined&&isSame(i.id)).length;
+  const empty=cb.items.filter(i=>pub.has(i.id)&&!asIs[i.id]&&texts[i.id]!==undefined&&!(drafts[i.id]!==undefined?drafts[i.id]:(texts[i.id]||'')).trim()).length;
+  if(blocked)$('#d-counts').innerHTML+=`<span style="color:#b91c1c"><b style="color:#b91c1c">${blocked}</b> ticked but ${empty===blocked?'empty':empty?'empty or identical to the original':'still identical to the original'}, not allowed to cross</span>`;
+  $('#d-cost').textContent=draftN?`DRAFTS THIS SESSION: ${draftN} · ${fmt(draftTok)} TOKENS`:'';
+  $('#d-save').disabled=snapshot()===initial||blocked>0;}
+// Layer one: deterministic scan. Anything matching is marked red on the left and counted on the right; it costs nothing.
+const FLAGS=[['path',/(?:~|\/Users|\/home|\/opt|\/etc|\/var|\/private)\/[^\s"'`)>\]]+/g],['email',/[\w.+-]+@[\w-]+\.[\w.-]+/g],['phone',/(?<![\d-])(?:\+\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?)\d{3,4}[\s-]?\d{3,4}(?![\d-])/g],['wallet/card',/\b(?:0x[a-fA-F0-9]{20,}|bc1[a-z0-9]{20,}|[13][a-km-zA-HJ-NP-Z1-9]{25,34}|\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4})\b/g],['secret',/\b(?:sk-[A-Za-z0-9]{8,}|passwords?|passphrases?|seed phrase|mnemonic|recovery (?:email|phrase|code)|2FA|backup codes?)\b/gi],['date',/\b(?:\d{4}-\d{2}-\d{2}|\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: \d{4})?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}(?:,? \d{4})?)\b/g],['money',/(?:€|\$|£|USD|EUR)\s?\d[\d,.]*|\b\d[\d,.]*\s?(?:euros?|dollars?|USD|EUR)\b/gi],['wifi',/\b(?:wi-?fi|ssid)\b/gi],['health',/\b(?:therap|doctor|dr\.|clinic|diagnos|medicat|anxiety|depress|hospital)\w*/gi],['employer',/\b(?:Northwind|Kraken|fintech)\b/g]];
+function spansOf(t){const out=[];for(const [n,re] of FLAGS){const r=new RegExp(re.source,re.flags);let m;while((m=r.exec(t||''))){if(m[0])out.push([m.index,m.index+m[0].length,n]);else r.lastIndex++;}}return out.sort((a,b)=>a[0]-b[0]);}
+function flagsOf(t){const c={};for(const [,,n] of spansOf(t))c[n]=(c[n]||0)+1;return c;}
+function markHTML(t){t=t||'';let out='',pos=0;for(const [a,b,n] of spansOs(t)){if(a<pos)continue;out+=esc(t.slice(pos,a))+`<mark title="${n}">${esc(t.slice(a,b))}</mark>`;pos=b;}return out+esc(t.slice(pos));}
+const spansOs=spansOf;
+function chips(t,empty){const f=flagsOf(t);const ks=Object.keys(f);if(!ks.length)return `<div class="flags"><span class="ok">${empty||'nothing flagged'}</span></div>`;return `<div class="flags">${ks.map(k=>`<span>${k} ×${f[k]}</span>`).join('')}</div>`;}
+const isSame=id=>{const o=(texts[id]||'').trim(),v=(drafts[id]!==undefined?drafts[id]:(texts[id]||'')).trim();return v===o||!v;};
+// Layer two: Hermes' own model drafts the guest version, once per original (cached by fingerprint server-side).
+async function draftOne(id,force){if(busy.has(id)||demo)return;busy.add(id);rerow(id);
+  try{const r=await fetch('/api/board/draft',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,force:!!force})});if(!r.ok)throw new Error((await r.json()).detail||r.status);const j=await r.json();
+    if(!j.cached){draftN++;draftTok+=j.tokens||0;}
+    if(j.draft==='NOTHING_SAFE_TO_SHARE'){drafts[id]='';nothingSafe.add(id);}else{drafts[id]=j.draft;nothingSafe.delete(id);}asIs[id]=false;}
+  catch(e){toast('Draft failed: '+e.message);}
+  busy.delete(id);rerow(id);refreshCounts();}
+function rerow(id){const row=document.querySelector(`.ent[data-id="${CSS.escape(id)}"]`);if(row&&byId[id]){row.outerHTML=entHTML(byId[id]);fitAll();}}
+// Guest boxes grow with their text, like the raw original on the left: no scrollbar, no resize grip.
+function fit(ta){ta.style.height='auto';ta.style.height=(ta.scrollHeight+2)+'px';}
+function fitAll(){document.querySelectorAll('#d-list textarea').forEach(fit);}
+function entHTML(it){const on=pub.has(it.id),lk=!it.publishable,chg=it.status==='changed'&&!on;
+  const st=lk?'locked':on?'public':chg?'changed':'private';
+  const left=`<div class="orig"><input type="checkbox" ${on?'checked':''} ${lk?'disabled':''} title="${lk?'this kind of content cannot be published':on?'untick to pull it back':'tick to give it to the guest'}"><div><div class="t">${short(it.title)}<span class="st ${st}">${st}</span></div><div class="path">${esc(it.path||it.source)}${it.note?' · '+esc(it.note):''}</div>${tierHTML(it)}<pre class="raw ${texts[it.id]===undefined?'wait':''}">${texts[it.id]===undefined?'loading raw…':markHTML(texts[it.id]===undefined?'':(texts[it.id]||'(empty)').length>FOLD&&!unfold.has(it.id)?(texts[it.id].slice(0,FOLD)+'\n…'):(texts[it.id]||'(empty)'))}</pre>${texts[it.id]&&texts[it.id].length>FOLD?`<button class="more">${unfold.has(it.id)?'Show less':`Show all · ${fmt(texts[it.id].length)} chars`}</button>`:''}${texts[it.id]!==undefined&&on?chips(texts[it.id],'nothing flagged in the original'):''}</div></div>`;
+  let right;
+  if(on){const v=drafts[it.id]!==undefined?drafts[it.id]:(texts[it.id]||'');const edited=v.trim()!==(texts[it.id]||'').trim();const same=texts[it.id]!==undefined&&isSame(it.id)&&!asIs[it.id];const b=busy.has(it.id);const ns=nothingSafe.has(it.id)&&!v.trim()&&!b;
+    right=`<div class="gst"><div class="k"><span>GUEST VERSION · RAW · ${cb.fact?'INJECTED AS A FACT':cb.id==='skills'?'PUBLIC METHOD · LISTED IN THE GUEST PROMPT, FOLLOWED ON USE':'SENT AS A DOCUMENT'}</span><span><label title="let the original cross unchanged"><input type="checkbox" class="asis" ${asIs[it.id]?'checked':''}> AS-IS</label>${SR?'<button class="mic" type="button" title="Dictate into the guest version (browser speech recognition)">MIC</button>':''}<button class="draft" type="button" ${b?'disabled':''}>${b?'Drafting…':'Draft with Hermes'}</button><button class="reset" type="button">Original</button></span></div><textarea spellcheck="false" class="${edited?'edited':''} ${same?'same':''}" ${texts[it.id]===undefined?'':'data-filled="1"'} ${b?'disabled':''} placeholder="${ns?'Write the guest version yourself, or untick the entry.':'Guest version'}">${esc(b?'Hermes is drafting a guest version…':v)}</textarea>${texts[it.id]!==undefined&&!b?chips(v,asIs[it.id]?'crossing as-is, nothing flagged':'nothing flagged in the guest version'):''}${ns?`<div class="warn">HERMES DRAFTED NOTHING · IT JUDGED EVERY PART OF THIS NOTE PRIVATE (PATHS, EMPLOYER, DATES, ACCOUNTS) · WRITE A GUEST VERSION YOURSELF, OR UNTICK · NOTHING CROSSES WHILE THIS IS EMPTY</div>`:same?`<div class="warn">${!v.trim()?'EMPTY · NOTHING WOULD CROSS':'SAME AS THE ORIGINAL'} · DRAFT IT, EDIT IT, OR TICK AS-IS</div>`:''}</div>`;}
+  else if(chg)right=`<div class="gst"><div class="ghost"><span class="st changed">ORIGINAL CHANGED · DROPPED BACK TO PRIVATE</span><span class="why">The original was edited after you published it, so the guest lost it. Tick again to republish; the last guest version is below.</span>${drafts[it.id]?`<pre>${esc(drafts[it.id])}</pre>`:''}</div></div>`;
+  else if(lk)right=`<div class="gst"><div class="ghost"><span class="st locked">LOCKED</span><span class="why">This kind of content never crosses, whoever ticks it.</span></div></div>`;
+  else right=`<div class="gst"><div class="ghost"><span class="st">NOT IN THIS SESSION</span><span class="why">${esc(cb.guest.why||'untick on the left, and it is simply not there')}</span></div></div>`;
+  return `<div class="ent" data-id="${esc(it.id)}">${left}<div class="arr ${on?'':'off'}">${on?'→':'·'}</div>${right}</div>`;}
+function renderList(){const L=$('#d-list');const byCh={};let shown=cb.items;if(hits)shown=shown.filter(i=>hits.has(i.id));
+  for(const it of shown){const ch=cb.chapter?cb.chapter(it.group):'';(byCh[ch]=byCh[ch]||[]).push(it);}
+  const want=[];
+  const html=Object.entries(byCh).map(([ch,arr])=>{const key=ch||'_';const n=pages[key]||Math.min(arr.length,PAGE);const vis=arr.slice(0,n);
+    const onIds=vis.filter(i=>pub.has(i.id)).map(i=>i.id);const autoIds=vis.length<=AUTO_TEXT?vis.map(i=>i.id):onIds;want.push(...autoIds);
+    const head=ch?`<div class="ch"><span class="lbl">${esc(ch)}</span><span class="n">${arr.length} ${arr.length===1?'ENTRY':'ENTRIES'}${vis.length<arr.length?` · SHOWING ${vis.length}`:''}</span>${vis.length>AUTO_TEXT?`<button class="loadraw" data-ch="${esc(key)}">Load raw for all ${vis.length}</button>`:''}</div>`:(vis.length>AUTO_TEXT?`<div class="ch"><span class="lbl">ALL ENTRIES</span><span class="n">${arr.length}${vis.length<arr.length?` · SHOWING ${vis.length}`:''}</span><button class="loadraw" data-ch="_">Load raw for all ${vis.length}</button></div>`:'');
+    return head+vis.map(entHTML).join('')+(n<arr.length?`<div class="pager"><button class="morepage" data-ch="${esc(key)}">Show ${Math.min(PAGE,arr.length-n)} more of ${arr.length}</button></div>`:'');}).join('');
+  L.innerHTML=`<div class="dl">${html||'<div class="empty">Nothing here matches the search.</div>'}</div>`;
+  fitAll();refreshCounts();loadTexts(want);}
+function openDetail(s,rect){cb=s;open=true;lastRect=rect;pages={};document.body.classList.add('locked');
+  $('#d-su').textContent=`${s.step} · ${s.modeText}`;$('#d-ti').textContent=s.name;$('#d-desc').textContent=s.desc;
+  $('#detail').classList.remove('asguest');$('#d-guest').classList.remove('on');
+  renderList();
+  const det=$('#detail');det.classList.add('show');
+  const from=rect?`inset(${rect.top}px ${innerWidth-rect.right}px ${innerHeight-rect.bottom}px ${rect.left}px round 0)`:'inset(50% round 0)';
+  det.animate([{clipPath:from},{clipPath:'inset(0 round 0)'}],{duration:RM?1:800,easing:'cubic-bezier(.76,0,.18,1)',fill:'both'});}
+function closeDetail(){const det=$('#detail');const r=lastRect;
+  const to=r?`inset(${r.top}px ${innerWidth-r.right}px ${innerHeight-r.bottom}px ${r.left}px round 0)`:'inset(50% round 0)';
+  const a=det.animate([{clipPath:'inset(0 round 0)'},{clipPath:to}],{duration:RM?1:650,easing:'cubic-bezier(.76,0,.18,1)',fill:'both'});
+  a.onfinish=()=>{det.classList.remove('show');det.getAnimations().forEach(x=>x.cancel());open=false;document.body.classList.remove('locked');build();};}
+$('#rows').addEventListener('click',e=>{const c=e.target.closest('.cell.clk');if(!c||open)return;const s=SOURCES.find(x=>x.id===c.dataset.s);if(s)openDetail(s,c.getBoundingClientRect());});
+$('#close').onclick=closeDetail;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&open)closeDetail();});
+$('#d-list').addEventListener('change',async e=>{const row=e.target.closest('.ent');if(!row||e.target.type!=='checkbox')return;const id=row.dataset.id;
+  if(e.target.classList.contains('asis')){via[id]='single';asIs[id]=e.target.checked;rerow(id);refreshCounts();return;}
+  via[id]='single';
+  if(e.target.checked){await text(id);pub.add(id);if(cb.asis&&drafts[id]===undefined)asIs[id]=true;}else pub.delete(id);
+  rerow(id);refreshCounts();
+  if(e.target.checked&&!cb.asis&&!asIs[id]&&(drafts[id]===undefined||isSame(id)))draftOne(id);});
+$('#d-list').addEventListener('click',e=>{
+  const m=e.target.closest('.more');if(m){const id=m.closest('.ent').dataset.id;if(unfold.has(id))unfold.delete(id);else unfold.add(id);rerow(id);return;}
+  const db=e.target.closest('.draft');if(db){draftOne(db.closest('.ent').dataset.id,true);return;}
+  const rs=e.target.closest('.reset');if(rs){const row=rs.closest('.ent'),id=row.dataset.id,ta=row.querySelector('textarea');ta.value=texts[id]||'';fit(ta);delete drafts[id];ta.classList.remove('edited');refreshCounts();return;}
+  const lp=e.target.closest('.loadraw');if(lp){const ids=[...document.querySelectorAll('.ent')].map(r=>r.dataset.id);loadTexts(ids);lp.disabled=true;lp.textContent='Loading…';return;}
+  const mp=e.target.closest('.morepage');if(mp){const k=mp.dataset.ch;pages[k]=(pages[k]||PAGE)+PAGE;renderList();}});
+$('#d-list').addEventListener('input',e=>{const ta=e.target.closest('textarea');if(!ta)return;fit(ta);const id=ta.closest('.ent').dataset.id;drafts[id]=ta.value;ta.classList.toggle('edited',ta.value.trim()!==(texts[id]||'').trim());ta.classList.toggle('same',isSame(id)&&!asIs[id]);const g=ta.closest('.gst');const old=g.querySelector('.flags');if(old)old.outerHTML=chips(ta.value,'nothing flagged in the guest version');const w=g.querySelector('.warn');if(w&&!(isSame(id)&&!asIs[id]))w.remove();refreshCounts();});
+async function saveAll(){if(demo)return toast('Demo data, nothing saved');const public_texts={};for(const id of pub){if(asIs[id])continue;const dft=(drafts[id]||'').trim();if(dft&&dft!==(texts[id]||'').trim())public_texts[id]=dft;}
+  const ids=[...pub].filter(id=>!(via[id]==='bulk-B'&&!public_texts[id]));
+  const r=await fetch('/api/board/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_ids:ids,public_texts,decisions:Object.fromEntries(Object.entries(via).map(([k,v])=>[k,{via:v}]))})});
+  if(!r.ok)return toast('Save failed');const j=await r.json();combo=j.combination||null;
+  toast(`Synced: ${j.facts} facts, ${j.documents} documents now reach the guest`+((j.rejected||[]).length?` · ${j.rejected.length} refused (bulk click outside its tier)`:'')+(combo&&combo.hit?' · combination warning':'')+(j.failed?` · REVOKE INCOMPLETE: ${j.failed} guest session(s) not deleted; those guests now get fresh sessions; save again to retry`:''));
+  const id=cb&&cb.id;await load();if(open&&id){cb=SOURCES.find(s=>s.id===id);renderList();if($('#detail').classList.contains('asguest'))renderGuest();}}
+$('#d-save').onclick=saveAll;
+// ---------- "view as guest": the raw section the plugin injects, rebuilt from the synced projection
+$('#d-guest').onclick=()=>{const det=$('#detail');const on=det.classList.toggle('asguest');$('#d-guest').classList.toggle('on',on);if(on)renderGuest();};
+async function renderGuest(){const g=$('#gview');g.innerHTML='<p class="note">Loading the synced projection…</p>';
+  let pj={facts:[],documents:[]};try{const r=await fetch('/api/board/preview');if(r.ok)pj=await r.json();}catch{}
+  const facts=(pj.facts||[]).filter(f=>typeof f==='string'),docs=(pj.documents||[]).filter(d=>d&&typeof d==='object');
+  const lines=['## Notes about Salt (everything you know; say it freely)'];
+  if(facts.length)lines.push(...facts.map(f=>'- '+f.trim()));else lines.push('- (no notes yet: you know what Salt publishes, nothing more)');
+  if(docs.length){lines.push('\nLonger notes you can look up with public_notes_lookup:');lines.push(...docs.map(d=>'- '+(d.title||'')));}
+  const mine=cb.match?docs.filter(d=>cb.items.some(i=>(drafts[i.id]||'').trim()===(d.text||'').trim()||short(i.title)===esc(String(d.title||'').replace(/^.*› /,'')))):[];
+  g.innerHTML=`<p class="note">This is the raw text salts-secrets puts into the guest's system prompt every turn, rebuilt from the last synced projection (${facts.length} facts, ${docs.length} documents). Ticks you have not saved yet are not in it. Document bodies are not in the prompt; the guest fetches them with public_notes_lookup, and their raw text is listed below.</p><pre>${esc(lines.join('\n'))}</pre>`+
+    (docs.length?`<h4>DOCUMENT BODIES THE GUEST CAN FETCH · ${mine.length?`${mine.length} FROM ${esc(cb.name).toUpperCase()} SHOWN`:'FIRST 20 SHOWN'}</h4>`+(mine.length?mine:docs.slice(0,20)).map(d=>`<pre class="doc">### ${esc(d.title||'')}\n${esc(d.text||'')}</pre>`).join(''):'');}
+// disclosure policy: the owner's own words about what may cross; the server feeds it to every draft
+$('#pol-open').onclick=async()=>{try{const j=await (await fetch('/api/board/policy')).json();$('#pol-text').value=j.text;$('#pol-path').textContent=j.path;}catch{$('#pol-text').value='(demo: not available)';}$('#pol').classList.add('show');};
+$('#pol-close').onclick=()=>$('#pol').classList.remove('show');
+$('#pol-save').onclick=async()=>{const r=await fetch('/api/board/policy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('#pol-text').value})});toast(r.ok?'Policy saved; the next draft follows it':'Save failed');if(r.ok)$('#pol').classList.remove('show');};
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#pol').classList.contains('show'))$('#pol').classList.remove('show');});
+// ---------- triage: rules, then Hermes, sort every entry into A/B/C; the owner still clicks every entry over
+const TIER_TXT={A:'A · AS-IS',B:'B · REWRITE',C:'C · PRIVATE'};
+function tierHTML(it){const c=cls[it.id];if(!c)return '';const rh=c.rules_hit||[];const v=via[it.id]||it.decided_via;
+  return `<div class="tier t${c.tier}" title="${esc(rh.map(r=>r+': '+((rulesInfo[r]||{}).description||'')).join('\n'))}"><b>${TIER_TXT[c.tier]}</b>${esc(c.reason)}${rh.length?` <span class="rh">${rh.map(esc).join(' · ')}</span>`:''}${v?`<span class="via">· ${esc(v)}</span>`:''}</div>`;}
+function tierCounts(){const n={A:0,B:0,C:0};for(const it of items){const c=cls[it.id];if(c)n[c.tier]++;}return n;}
+function drawTriage(){const t=$('#triage');if(!t)return;const n=tierCounts(),done=Object.keys(cls).length,dirty=snapshot()!==initial||Object.keys(via).length>0;
+  t.innerHTML=`<div class="tl"><span class="lbl">TRIAGE · RULES FIRST, THEN HERMES · NOTHING CROSSES WITHOUT YOUR CLICK</span><span class="lbl">${done?`${n.A} A · ${n.B} B · ${n.C} C`:'NOT CLASSIFIED YET'}</span></div>`+
+  `<div class="tb"><button class="act" id="t-run">${done?'Classify again':'Classify'}</button><button class="act" data-bulk="A" ${n.A?'':'disabled'}>A · adopt all ${n.A} as-is</button><button class="act" data-bulk="B" ${n.B?'':'disabled'}>B · draft guest versions for all ${n.B}</button><button class="act" data-bulk="C" ${n.C?'':'disabled'}>C · keep all ${n.C} private</button><button class="act primary" id="t-save" ${dirty?'':'disabled'}>Save &amp; sync</button></div>`+
+  (combo&&combo.hit?`<div class="warn">${esc(combo.message)} · ${combo.ids.length} entries marked B</div>`:'')+
+  `<div class="tnote">A crosses unchanged, B crosses only as a guest version, C stays here. A bulk button only ever takes entries of its own tier; C never crosses in bulk. Every entry stays editable one by one, and every click is written to the approval log.</div>`;}
+async function runClassify(){const b=$('#t-run');if(b){b.disabled=true;b.textContent='Classifying…';}const t0=Date.now();
+  try{const r=await fetch('/api/board/classify',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});if(!r.ok)throw new Error(r.status);const j=await r.json();rulesInfo=j.rules||{};
+    cls={};for(const [id,c] of Object.entries(j.items||{}))cls[id]=c;
+    toast(`Classified in ${Math.round((Date.now()-t0)/1000)}s · ${j.counts.A} A · ${j.counts.B} B · ${j.counts.C} C`+(j.model?'':' · no model: rules only, nothing is A')+((j.errors||[]).length?` · ${j.errors.length} batch(es) failed`:''));}
+  catch(err){toast('Classify failed: '+err.message);}
+  drawTriage();if(open)renderList();}
+document.addEventListener('click',async e=>{const t=e.target;
+  if(t.id==='t-run'){if(demo)return toast('Demo data');runClassify();return;}
+  if(t.id==='t-save'){saveAll();return;}
+  const b=t.dataset&&t.dataset.bulk;if(!b||demo||document.body.classList.contains('ro'))return;
+  const ids=items.filter(it=>it.publishable&&cls[it.id]&&cls[it.id].tier===b).map(it=>it.id);
+  if(b==='A'){for(const id of ids){pub.add(id);asIs[id]=true;delete drafts[id];via[id]='bulk-A';}}
+  else if(b==='C'){for(const id of ids){pub.delete(id);via[id]='bulk-C';}}
+  else{for(const id of ids){pub.add(id);asIs[id]=false;via[id]='bulk-B';}t.disabled=true;const q=[...ids];let n=0;
+    await Promise.all(Array(4).fill(0).map(async()=>{while(q.length){const id=q.shift();await draftOne(id);n++;t.textContent=`Drafting ${n}/${ids.length}…`;if(nothingSafe.has(id)||!(drafts[id]||'').trim())pub.delete(id);}}));}
+  build();drawTriage();if(open)renderList();});
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2600);}
+// Dictation uses the browser's own speech recognition (Chrome, Edge, Safari); no server-side model.
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null;
+$('#d-list').addEventListener('click',e=>{const m=e.target.closest('.mic');if(!m||!SR)return;if(rec){rec.stop();return;}
+  const ta=m.closest('.gst').querySelector('textarea');rec=new SR();rec.lang=/^zh/i.test(navigator.language)?'zh-CN':(navigator.language||'en-US');rec.continuous=true;rec.interimResults=false;
+  m.textContent='STOP';m.classList.add('on');
+  rec.onresult=ev=>{for(let i=ev.resultIndex;i<ev.results.length;i++)if(ev.results[i].isFinal){const t=ev.results[i][0].transcript.trim();if(!t)continue;
+    ta.value=ta.value.trim()?ta.value.trimEnd()+' '+t:t;ta.dispatchEvent(new Event('input',{bubbles:true}));}};
+  rec.onend=()=>{rec=null;m.textContent='MIC';m.classList.remove('on');};rec.onerror=()=>rec&&rec.stop();rec.start();});
+load();
+fetch('/api/me').then(r=>r.json()).then(j=>{if(!j.readonly)return;document.body.classList.add('ro');const n=document.createElement('div');n.className='robar';n.textContent='READ ONLY · you see what Lena sees; saving, drafting and publishing are off';document.body.prepend(n);}).catch(()=>{});
+
+async function loadGuests(){const box=$('#g-rows');if(!box)return;try{const r=await fetch('/api/board/guests');if(!r.ok)throw 0;const j=await r.json();const c=j.counts||{};
+  $('#g-count').textContent=`${c.sessions||0} SESSIONS · ${c.questions||0} QUESTIONS · ${c.probes||0} PROBES`;
+  if(!(j.sessions||[]).length){box.innerHTML='<div class="empty">No guest has talked to Salt\'s assistant yet.</div>';return;}
+  box.innerHTML=j.sessions.slice(0,40).map(s=>{const when=s.started_at?new Date(s.started_at*1000).toLocaleString():'';const turns=(s.turns||[]).map(t=>t.role==='user'?`<div class="gq ${(s.probes||[]).includes(t.text)?'probe':''}">${esc(t.text)}</div>`:`<div class="ga">${esc(String(t.text).slice(0,400))}</div>`).join('');
+    const rc=s.receipt||{},tl=Object.entries(rc.tools||{}).map(([k,v])=>`${k}${v>1?' ×'+v:''}`).join(', ');
+    const used=`<div class="gr">USED · ${tl?'tools: '+esc(tl):'no tool calls, answered from the prompt (approved facts + method list)'}${(rc.looked_up||[]).length?' · looked up: '+esc(rc.looked_up.slice(0,6).join(' | ')):''}${rc.projection?' · projection of '+esc(new Date(rc.projection*1000).toLocaleString()):''}</div>`;
+    return `<div class="gs"><div class="gm">${esc(when)} · ${esc(s.source||'api')} · ${esc(s.id)}${s.live?'':' · archived'}</div>${turns}${used}</div>`;}).join('');
+  }catch{box.innerHTML='<div class="empty">Guest conversations are visible after unlocking as Lena.</div>';}}
+async function loadHealth(){try{const r=await fetch('/api/health');if(!r.ok)return;const j=await r.json();const iso=j.isolation;if(!iso)return;const m=$('#m-guest');m.textContent=(m.textContent||'')+' · '+iso.line;m.title=iso.checks.map(c=>(c.ok?'ok   ':'FAIL ')+c.text).join('\n');}catch{}}
+loadGuests();loadHealth();
+</script></body></html>

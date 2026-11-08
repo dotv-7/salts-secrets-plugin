@@ -1,0 +1,47 @@
+@startuml
+!pragma layout smetana
+skinparam handwritten true
+skinparam defaultFontName Dekko
+skinparam defaultFontSize 15
+skinparam shadowing true
+skinparam backgroundColor white
+skinparam ArrowColor #333333
+skinparam rectangle {
+  RoundCorner 6
+  BorderColor #333333
+}
+skinparam database {
+  BorderColor #333333
+}
+left to right direction
+
+actor "You\n(your own DM)" as you
+actor "Strangers\nTelegram · Discord\ngroups · web chat" as guest
+
+rectangle "One Hermes · one gateway · one process · one API key" #FAFAF5 {
+  rectangle "Owner profile" #FFF3E0 {
+    rectangle "Route hook\n--\npre_gateway_dispatch\nwho is asking?" as route #FFD9A0
+    rectangle "Your agent\n--\nSOUL · MEMORY · USER\nworkspace · skills · sessions\nevery tool" as oagent #FFD9A0
+    rectangle "Context page\n--\nrules then model: A / B / C\none owner click per item" as board #FFD9A0
+    database "approvals.jsonl\nevery click" as log #FFE9C7
+  }
+  rectangle "Public profile" #EEF7E4 {
+    rectangle "Guest agent\n--\nits own SOUL\napproved notes only\nweb · vision · image · speech" as pagent #C8E6A0
+    rectangle "Tool gate\n--\ndefault deny\nno local paths" as gate #C8E6A0
+    database "Projection\napproved facts\nand documents" as proj #DCEFC4
+    database "Guest state.db\nguest sessions only" as pdb #DCEFC4
+  }
+}
+
+you --> route
+guest --> route
+route --> oagent : owner DM
+route --> pagent : everyone else\n/p/public/v1
+oagent ..> board : private sources
+board --> proj : publish
+board --> log
+board --> pdb : revoke:\narchive + purge
+proj --> pagent
+pagent -- gate
+pagent --> pdb
+@enduml

@@ -1,0 +1,19 @@
+# Merged into <HERMES_HOME>/profiles/<public>/config.yaml by `hermes salts-secrets setup`.
+# The profile itself is the hard boundary (own memories, sessions, SOUL.md, API key);
+# the plugin's tool gate is the second line of defence.
+platform_toolsets:
+  api_server: [web, vision, image_gen, tts, clarify, public_notes]
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
+  provider: ""
+  nudge_interval: 0
+tools:
+  tool_search:
+    enabled: "off"   # its tool_call bridge would expose tools outside the list
+security:
+  allow_private_urls: false
+sessions:
+  auto_prune: false
+agent:
+  reasoning_effort: none   # otherwise reasoning_content is returned to guests

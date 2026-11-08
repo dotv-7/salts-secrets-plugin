@@ -1,0 +1,51 @@
+name: salts-secrets
+version: "0.3.0"
+requires_hermes: ">=0.23.0"
+description: >-
+  Let strangers talk to your Hermes without reaching your private memory. Only your own DM reaches
+  your profile; every other message (strangers' DMs, groups, channels, threads) is answered by a
+  separate public profile that has its own sessions, an empty working directory, no file, terminal or
+  memory tools, and only the facts you approved. Includes a dashboard to audit and publish context.
+author: dotv-7
+provides_hooks:
+  - pre_gateway_dispatch
+  - pre_tool_call
+  - post_tool_call
+provides_tools:
+  - public_notes_lookup
+  - salt_propose_public
+config_schema:
+  role:
+    type: str
+    default: ""
+    description: >-
+      owner or public. `setup` sets it on the public profile; when empty, a profile named after
+      public_profile plays the public part and every other profile the owner part.
+  owners:
+    type: list
+    default: []
+    description: >-
+      Your identities as platform:user_id (e.g. telegram:123456), written by
+      `hermes salts-secrets setup --owner`. Never guessed: if empty, every message gets the public profile.
+  public_profile:
+    type: str
+    default: public
+    description: Profile that answers everyone else, served at /p/<profile>/v1 by the same gateway.
+  guest_rate_per_hour:
+    type: int
+    default: 20
+    description: Messages one guest may send per hour before replies pause.
+  owner_name:
+    type: str
+    default: the owner
+    description: How the public profile refers to you (a handle or pen name, never your real name).
+  workspaces:
+    type: list
+    default: []
+    description: >-
+      Folders the Context tab offers for publishing (default <HERMES_HOME>/workspace). Nothing in them
+      reaches guests until you tick it.
+requires_env:
+  - name: SALTS_PUBLIC_API_KEY
+    description: API_SERVER_KEY of the public profile. `hermes salts-secrets setup` writes it.
+    required: false

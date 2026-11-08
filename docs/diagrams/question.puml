@@ -1,0 +1,35 @@
+@startuml
+skinparam handwritten true
+skinparam defaultFontName Dekko
+skinparam defaultFontSize 15
+skinparam shadowing true
+skinparam backgroundColor white
+skinparam sequence {
+  ArrowColor #333333
+  LifeLineBorderColor #888888
+  ParticipantBorderColor #333333
+  ActorBorderColor #333333
+}
+skinparam note {
+  BackgroundColor #FFF8C4
+  BorderColor #333333
+}
+actor Stranger as S
+participant "Gateway" as G
+participant "Route hook\n(owner profile)" as R #FFD9A0
+participant "Guest agent\n(public profile)" as P #C8E6A0
+participant "Tool gate" as T #C8E6A0
+participant "Your agent" as O #FFD9A0
+
+S -> G : message in a group or DM
+G -> R : pre_gateway_dispatch
+R -> R : not the owner's DM\n20 messages an hour
+R -> P : local API, session guest-<platform>-<chat>
+P -> P : prompt = its own SOUL\n+ approved notes
+P -> T : tool call (web, image...)
+T --> P : allowed, or refused:\noff-list or a local path
+P --> R : answer
+R --> S : reply
+R --> G : skip
+note over O : never sees the message,\neven when the guest side fails\n(the stranger gets a short notice)
+@enduml

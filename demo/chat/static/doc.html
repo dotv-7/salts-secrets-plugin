@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Developer doc · Salt</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Antonio:wght@400&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+:root{--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,"PingFang SC",monospace;--disp:"Antonio",Impact,"PingFang SC",sans-serif;--bg:#f2f2f2;--text:#000091;--dim:#6b6bd6;--accent:#0000f2;--hair:rgba(0,0,242,.15)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:13.5px/1.7 var(--mono)}
+body::before{content:"";position:fixed;inset:0;border:6px solid var(--accent);pointer-events:none}
+.wrap{max-width:920px;margin:0 auto;padding:0 24px 80px}
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px 0 12px;border-bottom:1px solid var(--accent)}
+.brand{color:var(--accent);font:400 26px/1 var(--disp);text-transform:uppercase;flex:1}
+a{color:var(--accent)}.bar a{font-size:12px;letter-spacing:.06em;border:1px solid var(--accent);padding:3px 10px;text-decoration:none}
+h2{font:400 20px/1.2 var(--disp);text-transform:uppercase;color:var(--accent);margin:34px 0 8px;letter-spacing:.03em}
+.dim{color:var(--dim)}code{background:#fff;border:1px solid var(--hair);padding:0 5px}
+pre{position:relative;background:#fff;border:1px solid var(--hair);padding:12px 14px;overflow-x:auto;font-size:12.5px;line-height:1.55;white-space:pre}
+pre button{position:absolute;top:6px;right:6px;font:600 10px var(--mono);letter-spacing:.08em;color:var(--accent);background:#fff;border:1px solid var(--accent);cursor:pointer;padding:2px 8px}
+table{border-collapse:collapse;width:100%;font-size:12.5px}td,th{border-bottom:1px solid var(--hair);padding:5px 8px;text-align:left;vertical-align:top}th{color:var(--dim);font-weight:500}
+</style></head><body><div class="wrap">
+<div class="bar"><span class="brand">Salt · developer doc</span><a href="/">CHAT</a><a href="/shelf">CONTEXT</a></div>
+<p class="dim">Lena (fictional) is a pseudonymous crypto analyst who writes as Salt. Her Hermes knows her methods and her life; strangers reach Salt's twin, which has the first and none of the second.</p>
+<p>How to call this Hermes from code: curl, a script, or another agent. Everything goes through this site's HTTP API at <code class="base"></code>; the Hermes API server itself is not exposed. Two rooms sit behind it: the <b>guest room</b> (anyone, holds only what Lena approved) and Lena's <b>own room</b> (read-only passphrase, her full memory, no tools).</p>
+
+<h2>1 · Ask the guest room</h2>
+<p>One JSON body, a Server-Sent Events stream back. Keep the cookie jar: the signed <code>salt</code> cookie is your session.</p>
+<pre data-k="curl"></pre>
+<p>The stream is <code>data: {"t": "..."}</code> chunks (concatenate them), ending with <code>data: {"done": true}</code>, or one <code>data: {"error": "..."}</code>.</p>
+<pre>data: {"t": "Salt"}
+data: {"t": " writes Low Tide, a newsletter about..."}
+data: {"done": true}</pre>
+
+<h2>2 · Sessions</h2>
+<p>Reusing the jar continues the conversation. <code>POST /api/new</code> starts a fresh one; a guest's browser tab does this on every reload, so nothing a guest says is carried over.</p>
+<pre data-k="new"></pre>
+
+<h2>3 · Lena's own room, read-only</h2>
+<p id="ro"></p>
+<pre data-k="unlock"></pre>
+<p>After this, <code>/api/chat</code> on the same jar talks to Lena's own agent. Read-only sessions run no tools (the owner profile refuses every tool call for them), take messages up to 2,000 characters, and restart after 12 turns. Every write endpoint answers <code>403 read-only mode</code>. <code>POST /api/lock</code> goes back to the guest room.</p>
+
+<h2>4 · From Python</h2>
+<pre data-k="py"></pre>
+
+<h2>5 · From another Hermes</h2>
+<p>Save this as <code>~/.hermes/skills/talk-to-salt/SKILL.md</code> on the other agent (it needs the terminal tool). It then asks this Hermes instead of guessing.</p>
+<pre data-k="skill"></pre>
+
+<h2>6 · Endpoints</h2>
+<table><tr><th>Method</th><th>Path</th><th>Body</th><th>Returns</th></tr>
+<tr><td>POST</td><td>/api/chat</td><td><code>{"message": "1-20000 chars"}</code></td><td>SSE stream as above</td></tr>
+<tr><td>POST</td><td>/api/new</td><td><code>{}</code></td><td><code>{"ok": true}</code>, next chat is a new session</td></tr>
+<tr><td>POST</td><td>/api/unlock</td><td><code>{"passphrase": "..."}</code></td><td>same as <code>/api/me</code></td></tr>
+<tr><td>POST</td><td>/api/lock</td><td><code>{}</code></td><td>same as <code>/api/me</code>, back to guest</td></tr>
+<tr><td>GET</td><td>/api/me</td><td></td><td><code>{"role": "guest"|"owner", "readonly"?: true, "guest_access": bool}</code></td></tr>
+<tr><td>GET</td><td>/api/health</td><td></td><td>the isolation check, 12 named checks</td></tr>
+<tr><td>GET</td><td>/api/doc</td><td></td><td>what the guest room holds (below), as JSON</td></tr></table>
+<p class="dim">POST bodies must be <code>Content-Type: application/json</code>.</p>
+
+<h2>7 · Errors</h2>
+<table><tr><th>Status</th><th>When</th></tr>
+<tr><td>400</td><td>empty or too long message</td></tr>
+<tr><td>401</td><td>wrong passphrase</td></tr>
+<tr><td>403</td><td><code>guest chat is closed</code> (owner switched guests off), <code>read-only mode</code>, <code>you are blocked</code></td></tr>
+<tr><td>415</td><td>POST without <code>application/json</code></td></tr>
+<tr><td>429</td><td>5 wrong passphrases from one address in 5 minutes</td></tr></table>
+
+<h2>8 · What the guest room holds right now</h2><div id="knows" class="dim">loading…</div>
+<p id="iso" class="dim"></p>
+</div><script>
+const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const B=location.origin;document.querySelectorAll('.base').forEach(e=>e.textContent=B);
+function fill(pass){const P=pass||'<read-only passphrase>';const T={
+curl:`curl -sN -c salt.jar -b salt.jar -H 'Content-Type: application/json' \\
+  -d '{"message":"What does Salt write about?"}' ${B}/api/chat`,
+new:`curl -s -c salt.jar -b salt.jar -H 'Content-Type: application/json' -d '{}' ${B}/api/new`,
+unlock:`curl -s -c salt.jar -b salt.jar -H 'Content-Type: application/json' \\
+  -d '{"passphrase":"${P}"}' ${B}/api/unlock
+# {"role":"owner","readonly":true,...}`,
+py:`import json, requests
+
+s = requests.Session()  # keeps the salt cookie
+
+def ask(message: str) -> str:
+    r = s.post("${B}/api/chat", json={"message": message}, stream=True, timeout=180)
+    r.raise_for_status()
+    out = []
+    for line in r.iter_lines(decode_unicode=True):
+        if not line.startswith("data: "):
+            continue
+        event = json.loads(line[6:])
+        if "error" in event:
+            raise RuntimeError(event["error"])
+        out.append(event.get("t", ""))
+    return "".join(out)
+
+print(ask("What does Salt write about?"))
+# s.post("${B}/api/unlock", json={"passphrase": "${P}"})  # Lena's own room, read-only`,
+skill:`---
+name: talk-to-salt
+description: Ask Salt's public assistant at ${B} about Salt and her published work, instead of guessing.
+---
+
+# Talk to Salt
+
+Salt's assistant only knows what its owner approved for strangers. Ask it in plain language.
+
+## Steps
+1. Ask (the cookie jar keeps one conversation going):
+   curl -sN -c /tmp/salt.jar -b /tmp/salt.jar -H 'Content-Type: application/json' \\
+     -d '{"message":"<your question>"}' ${B}/api/chat
+2. Join the "t" fields of the data: lines; stop at {"done": true}. {"error": ...} means it failed.
+3. New topic: curl -s -c /tmp/salt.jar -b /tmp/salt.jar -H 'Content-Type: application/json' -d '{}' ${B}/api/new
+
+## Pitfalls
+- If it declines (real name, address, accounts...), that is the answer; do not rephrase to get around it.
+- 403 "guest chat is closed" means the owner switched guests off; try later.`};
+document.querySelectorAll('pre[data-k]').forEach(e=>{e.textContent=T[e.dataset.k];const b=document.createElement('button');b.textContent='COPY';
+  b.onclick=()=>navigator.clipboard.writeText(T[e.dataset.k]).then(()=>{b.textContent='COPIED';setTimeout(()=>b.textContent='COPY',1200);});e.appendChild(b);});}
+fill('');
+fetch('/api/doc').then(r=>r.json()).then(d=>{fill(d.viewer_hint);
+  $('#ro').innerHTML=d.viewer?(d.viewer_hint?`The read-only passphrase for this install is public: <code>${esc(d.viewer_hint)}</code>.`:'This install has a read-only passphrase; ask Lena for it.'):'This install has no read-only passphrase; only Lena can enter her own room.';
+  const docs=d.documents.filter(Boolean);
+  $('#knows').innerHTML=`<p>${d.facts} ${d.facts===1?'fact':'facts'} and ${docs.length} ${docs.length===1?'document':'documents'} approved for guests. Guest tools: ${d.tools.length?d.tools.map(t=>`<code>${esc(t)}</code>`).join(' '):'none'}. Guest web chat is ${d.guest_access?'open':'closed'}${d.platforms.length?'; guests can also message the bot on '+d.platforms.map(esc).join(' and '):''}.</p>`+
+    (docs.length?'<details><summary>document titles</summary><ul>'+docs.map(t=>`<li>${esc(t)}</li>`).join('')+'</ul></details>':'');
+  $('#iso').textContent=d.isolation||'';
+}).catch(()=>{$('#knows').textContent='could not load /api/doc';});
+</script></body></html>

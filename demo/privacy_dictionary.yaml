@@ -1,0 +1,8 @@
+# The demo owner's own words for the privacy rules (fictional, from the Lena persona).
+# Copy to <HERMES_HOME>/plugin-data/salts-secrets/privacy_rules.yaml in the demo owner home.
+dictionary:
+  real_names: [Lena Moreau, Lena, Moreau]
+  family: [Tomás, Clara, Mochi, Miguel, Diogo, André, Nico, Sofia]
+  colleagues: [Northwind, Rui]
+  places: [Lisbon, Lisboa, Porto, Bonfim, 里斯本, 波尔图]
+  exchanges: [Kraken, Binance]
