@@ -2,7 +2,7 @@
 
 Everything in this folder is the demo shown at https://salt.dotv.io/. None of it ships in the plugin.
 
-Salt is a fictional pseudonymous on-chain analyst; her owner, Lena, is fiction too. Every fact,
+Salt is a fictional anonymous crypto KOL (@saltwater_sats, 310k followers on X); her owner, Lena, is fiction too. Every fact,
 password and address in the seed data is invented.
 
 | Path | What |

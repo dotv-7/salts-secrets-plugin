@@ -6,24 +6,25 @@
 
 [![tests](https://github.com/dotv-7/salts-secrets-plugin/actions/workflows/tests.yml/badge.svg)](https://github.com/dotv-7/salts-secrets-plugin/actions/workflows/tests.yml)
 
-**The story (a fictional demo, every detail invented).** Lena Moreau is a pseudonymous crypto analyst. Online
-she is only **Salt**: [@saltwater_sats](https://salt.dotv.io), author of the Low Tide newsletter on stablecoin
+**The story (a fictional demo, every detail invented).** Lena Moreau is an anonymous crypto KOL. Online
+she is only **Salt**: [@saltwater_sats](https://salt.dotv.io), 310k followers on X, the account that called out
+Harbor Finance's reserves three weeks before it collapsed, and author of Low Tide, a paid newsletter on stablecoin
 reserves, bridges and exchange risk. For two years she has been training her Hermes: every issue she wrote, her
 four bridge checks, her exchange net-outflow signal, the calls she got wrong and why. It now analyses the way she
-does, and her readers want to talk to it.
+does, and her followers want to talk to it: check a bridge, read a wallet, ask why she made a call.
 
 The same Hermes knows her real name and her flat in Lisbon, her hot wallet and what she holds, an unpublished call
 on Lantern v2, the day her father died, and the password to her router, because she told it. Today she has two
-choices: keep her twin private and her readers get nothing, or share it and every one of those facts is one
-question away for anyone on Telegram, Discord or the web. For a pseudonymous analyst that is doxxing, front-running
+choices: keep her twin private and her followers get nothing, or share it and every one of those facts is one
+question away for anyone on Telegram, Discord or the web. For an anonymous KOL that is doxxing, front-running
 and harassment waiting to happen.
 
 What actually goes wrong when you share an agent that knows you:
 
-- **One question doxxes you.** "Which city does Salt live in?" Her Hermes knows the street. For a pseudonymous
-  analyst the handle is the safety, and a guessing game ("is it Lisbon?") leaks as much as an answer.
+- **One question doxxes you.** "Which city does Salt live in?" Her Hermes knows the street. For an anonymous
+  KOL the handle is the safety, and a guessing game ("is it Lisbon?") leaks as much as an answer.
 - **Your book gets front-run.** Her holdings, her hot wallet and an unpublished call on Lantern v2 are in memory.
-  One leak moves a market against her, or against the readers who trust her.
+  One leak moves a market against her, or against the followers who trade on her calls.
 - **Your family becomes content.** Her father's death anniversary, her mother's medication, a letter to her
   estranged sister: all in the workspace her agent reads.
 - **Credentials are one tool call away.** Router password, where the recovery kit lives, API keys. An agent with
