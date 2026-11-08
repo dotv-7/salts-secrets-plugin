@@ -35,6 +35,7 @@ class Rule:
     source: dict = field(default_factory=dict)
     quasi: str = ""
     examples: dict = field(default_factory=dict)
+    hard: bool = False
 
 
 @dataclass
@@ -71,6 +72,7 @@ def _rule(raw: dict) -> Rule:
         source=dict(raw.get("source") or {}),
         quasi=str(raw.get("quasi") or ""),
         examples=dict(raw.get("examples") or {}),
+        hard=bool(raw.get("hard")),
     )
 
 
@@ -153,6 +155,11 @@ def screen_text(text: str, ruleset: Ruleset) -> list[Rule]:
         if pattern and pattern.search(text) and spec.get("rule") in by_name:
             hits.append(by_name[spec["rule"]])
     return hits
+
+
+def hard_stops(text: str, ruleset: Ruleset) -> list[str]:
+    """Rules marked ``hard`` that the text hits: no click, single or bulk, publishes such a text."""
+    return [r.name for r in ruleset.rules if r.hard and any(p.search(text) for p in r.patterns)]
 
 
 def screen(item: Any, ruleset: Ruleset) -> dict:

@@ -177,7 +177,10 @@ open anything in your profile.
   health and family, file origin, dates, plus a cross-item combination rule) set a floor the model can
   only raise; an item is A only if no rule hits and the model says A. One button per tier (adopt all A
   as-is, draft guest versions for all B, keep all C private); a bulk click only takes items of its own
-  tier and C never crosses in bulk. Nothing crosses without an owner click, and every click is appended
+  tier and C never crosses in bulk. A single click may override the classifier, with one exception: text the
+  author marked "do not publish" (`hard: true` rules) is refused on any click and kept out of the projection even
+  if an older allowlist approved it; cut that part from the guest version to publish the rest. Nothing crosses
+  without an owner click, and every click is appended
   to `plugin-data/salts-secrets/approvals.jsonl` with `decided_by`, `decided_via`
   (single / bulk-A / bulk-B / bulk-C), `classifier_tier`, `rules_hit` and whether it overrode the
   classifier. Projected facts and documents carry their tier and whether they are as-is or rewritten.

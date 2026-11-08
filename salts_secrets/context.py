@@ -667,7 +667,8 @@ def approve(
     ``decisions`` says how each click happened (``single`` or ``bulk-A``/``bulk-B``/``bulk-C``). A bulk click
     only counts for items the classifier put in that tier (bulk-B only with a guest version), and never for a
     C item: those are refused and
-    returned in ``rejected``. A single click may override the classifier (logged as an override). Every
+    returned in ``rejected``. A single click may override the classifier (logged as an override), but no click publishes a guest-facing
+    text that hits a ``hard`` rule (the author wrote "do not publish" into it): refused with ``why``. Every
     change is appended to the owner's approval log, so each published item traces back to one owner click."""
     from . import privacy
 
@@ -676,6 +677,7 @@ def approve(
 
         classification = cached(owner_home, items)
     wanted, texts, decisions = set(public_ids), public_texts or {}, decisions or {}
+    rules = privacy.load_rules(owner_home)
     previous = load_allowlist(owner_home)
     entries: dict[str, dict] = {}
     rejected, log = [], []
@@ -702,6 +704,12 @@ def approve(
         if via == "bulk-B" and not public_text:
             rejected.append({"id": it.id, "title": it.title, "tier": tier, "via": via, "why": "no guest version"})
             continue
+        stops = privacy.hard_stops(public_text or it.text, rules)
+        if stops:
+            rejected.append({"id": it.id, "title": it.title, "tier": tier, "via": via, "why": "marked do not publish",
+                             "rules_hit": stops})
+            log.append({**base, "at": now, "decision": "refused", "why": "marked do not publish"})
+            continue
         if (prev and not dec and prev.get("fingerprint") == it.fingerprint
                 and prev.get("public_text", "") == public_text):
             entries[it.id] = {**base, "decided_via": "single", **prev}  # unchanged since the owner approved it
@@ -713,7 +721,6 @@ def approve(
             entry["public_text"] = public_text
         entries[it.id] = entry
         log.append({**{k: v for k, v in entry.items() if k != "public_text"}, "at": now, "decision": "public"})
-    rules = privacy.load_rules(owner_home)
     shown = {i.id: privacy.screen({"text": entries[i.id].get("public_text") or i.text, "title": ""}, rules)
              for i in items if i.id in entries}
     combo = privacy.combination(shown, rules)
@@ -761,12 +768,19 @@ def status(item: Item, allowlist: dict[str, dict]) -> str:
     return "public" if entry.get("fingerprint") == item.fingerprint else "changed"
 
 
-def build_projection(items: list[Item], allowlist: dict[str, dict], owner_name: str = "the owner") -> dict:
-    """Only items approved with an unchanged fingerprint; everything else stays out (private by default)."""
-    public = [it for it in items if status(it, allowlist) == "public"]
+def build_projection(
+    items: list[Item], allowlist: dict[str, dict], owner_name: str = "the owner", rules: Optional["privacy.Ruleset"] = None
+) -> dict:
+    """Only items approved with an unchanged fingerprint; everything else stays out (private by default). With
+    ``rules``, an approved text that hits a ``hard`` rule stays out too, whenever and however it was approved."""
+
+    from . import privacy
 
     def shown(it: Item) -> str:
         return (allowlist.get(it.id, {}).get("public_text") or it.text).strip()
+
+    public = [it for it in items if status(it, allowlist) == "public"
+              and not (rules and privacy.hard_stops(shown(it), rules))]
 
     def origin(it: Item) -> dict:
         entry = allowlist.get(it.id, {})
@@ -806,7 +820,9 @@ def write_projection(
 ) -> dict:
     """Projection only, no revocation handling. Use ``publish`` unless the caller handles revocation itself."""
     items = scan(owner_home, workspace_roots)
-    projection = build_projection(items, load_allowlist(owner_home), owner_name)
+    from . import privacy
+
+    projection = build_projection(items, load_allowlist(owner_home), owner_name, privacy.load_rules(owner_home))
     _atomic_write(data_dir(public_home) / PROJECTION_FILE, json.dumps(projection, ensure_ascii=False, indent=2), 0o644)
     return projection
 

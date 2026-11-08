@@ -99,6 +99,38 @@ def test_single_click_overrides_are_logged(owner):
     assert core.read_approval_log(owner)[-1]["decision"] == "private"
 
 
+MARKED = "Low Tide method: read the as-of date first.\n\n## Operating notes (mine, do not publish)\n- my contact is Marta"
+CLEAN = "Low Tide method: read the as-of date first."
+
+
+def test_no_click_publishes_text_marked_do_not_publish(tmp_path):
+    home = tmp_path / "owner"
+    (home / "memories").mkdir(parents=True)
+    (home / "memories/MEMORY.md").write_text(MARKED, encoding="utf-8")
+    items = core.scan(home, [])
+    (it,) = items
+    for via in ("bulk-C", "chat", "single"):
+        approved = core.approve(home, items, [it.id], {}, {it.id: {"via": via}})
+        assert approved["entries"] == {} and approved["rejected"][0]["id"] == it.id
+    assert approved["rejected"][0]["why"] == "marked do not publish"
+    assert core.read_approval_log(home)[-1]["decision"] == "refused"
+    approved = core.approve(home, items, [it.id], {it.id: CLEAN}, {it.id: {"via": "single"}})
+    assert not approved["rejected"] and core.write_projection(home, home / "profiles/public", [])["facts"] == [CLEAN]
+
+
+def test_projection_drops_a_marked_text_an_older_allowlist_approved(tmp_path):
+    home = tmp_path / "owner"
+    (home / "memories").mkdir(parents=True)
+    (home / "memories/MEMORY.md").write_text(MARKED, encoding="utf-8")
+    items = core.scan(home, [])
+    core.approve(home, items, [items[0].id], {items[0].id: CLEAN}, {items[0].id: {"via": "single"}})
+    path = data_dir(home) / core.ALLOWLIST_FILE
+    data = json.loads(path.read_text(encoding="utf-8"))
+    data["entries"][0]["public_text"] = MARKED + " (edited)"  # approved before the hard rule existed
+    path.write_text(json.dumps(data), encoding="utf-8")
+    assert core.write_projection(home, home / "profiles/public", [])["facts"] == []
+
+
 def test_bulk_a_does_not_take_b_items(owner):
     items = core.scan(owner, [])
     t = tiers(classify.run(owner, items, fake_model(lambda text: "A")[0]))

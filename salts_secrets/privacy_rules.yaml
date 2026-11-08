@@ -256,6 +256,17 @@ rules:
     examples:
       hit: ["Never share this with anyone", "这条别说出去", "NDA until March"]
       miss: ["the public mint"]
+  - name: marked_do_not_publish
+    group: health_family
+    tier: C
+    hard: true
+    description: The author wrote "do not publish" (or the like) into the text itself. Refused even on a single click; delete that part to publish the rest.
+    patterns:
+      - '\b(?:do not|don''t|never) (?:share|publish|mention|name)\b|\b(?:not for publication|off the record)\b'
+      - '不要公开|不公开|勿公开|别说出去|不要外传'
+    examples:
+      hit: ["## Private operating notes (mine, do not publish)", "Never name him.", "这段不要公开"]
+      miss: ["outflow to private wallets", "the private profile is reserved for Salt"]
 
   # 5. File and location signals (where an item comes from, not what it says) -------------------
   - name: private_folder

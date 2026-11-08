@@ -404,7 +404,7 @@ async function saveAll(){if(demo)return toast('Demo data, nothing saved');const 
   const ids=[...pub].filter(id=>!(via[id]==='bulk-B'&&!public_texts[id]));
   const r=await fetch('/api/board/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_ids:ids,public_texts,decisions:Object.fromEntries(Object.entries(via).map(([k,v])=>[k,{via:v}]))})});
   if(!r.ok)return toast('Save failed');const j=await r.json();combo=j.combination||null;
-  toast(`Synced: ${j.facts} facts, ${j.documents} documents now reach the guest`+((j.rejected||[]).length?` · ${j.rejected.length} refused (bulk click outside its tier)`:'')+(combo&&combo.hit?' · combination warning':'')+(j.failed?` · REVOKE INCOMPLETE: ${j.failed} guest session(s) not deleted; those guests now get fresh sessions; save again to retry`:''));
+  toast(`Synced: ${j.facts} facts, ${j.documents} documents now reach the guest`+((j.rejected||[]).length?` · ${j.rejected.length} refused (bulk click outside its tier, or marked do not publish)`:'')+(combo&&combo.hit?' · combination warning':'')+(j.failed?` · REVOKE INCOMPLETE: ${j.failed} guest session(s) not deleted; those guests now get fresh sessions; save again to retry`:''));
   const id=cb&&cb.id;await load();if(open&&id){cb=SOURCES.find(s=>s.id===id);renderList();if($('#detail').classList.contains('asguest'))renderGuest();}}
 $('#d-save').onclick=saveAll;
 // ---------- "view as guest": the raw section the plugin injects, rebuilt from the synced projection

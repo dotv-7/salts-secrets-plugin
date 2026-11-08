@@ -145,7 +145,7 @@
               `${result.facts} facts and ${result.documents} documents public` +
               (result.revoked ? `; ${result.revoked} revoked, ${result.deleted} guest sessions purged` : "") +
               (result.failed ? `; REVOKE INCOMPLETE: ${result.failed} guest session(s) not deleted, their guests now get fresh sessions; publish again to retry` : "") +
-              ((result.rejected || []).length ? `; ${result.rejected.length} refused (bulk click outside its tier)` : "") +
+              ((result.rejected || []).length ? `; ${result.rejected.length} refused (bulk click outside its tier, or marked do not publish)` : "") +
               (result.combination && result.combination.hit ? "; " + result.combination.message : "")))));
     });
   }
