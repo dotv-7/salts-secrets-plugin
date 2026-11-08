@@ -182,28 +182,28 @@ def guest_key(src: Any) -> str:
     return f"{platform_name(src.platform)}:{src.user_id or src.chat_id}"
 
 
-def leave_stale_session(gateway: Any, session_store: Any, src: Any) -> bool:
-    """Move a guest off a session a failed purge left behind, before the gateway resumes it.
+def leave_stale_session(session_store: Any) -> bool:
+    """Move every guest off a session a failed purge left behind, before the gateway resumes it.
 
-    ``False`` when that cannot be settled (no store, unknown key, reset refused) while a purge is still
-    incomplete: the caller then refuses the turn rather than risk serving the revoked transcript."""
+    Uses the session store the gateway hands ``pre_gateway_dispatch``: each stale session still routed to a
+    chat is reset to a fresh one (a new session id, so the turn loads an empty transcript and the agent cache
+    rebuilds). ``False`` when that cannot be settled (no store, reset refused) while a purge is incomplete:
+    the caller then refuses the turn rather than risk serving the revoked transcript."""
     from . import guests
 
     stale = guests.stale_ids(current())
     if not stale:
         return True
+    if session_store is None:
+        return False
     try:
-        key = gateway._session_key_for_source(src)
-        if session_store.peek_session_id(key) not in stale:
-            return True
-        if session_store.reset_session(key) is None:
-            return False
-        evict = getattr(gateway, "_evict_cached_agent", None)
-        if callable(evict):
-            evict(key)
+        for sid in stale:
+            entry = session_store.lookup_by_session_id(sid)
+            if entry is not None and session_store.reset_session(entry.session_key) is None:
+                return False
         return True
     except Exception as exc:  # noqa: BLE001
-        log.warning("%s: cannot tell whether this guest is on a revoked session (%s)", NAME, exc)
+        log.warning("%s: cannot move guests off revoked sessions (%s)", NAME, exc)
         return False
 
 
@@ -223,7 +223,7 @@ def make_guest_hook(limiter: RateLimiter):
         if not limiter.allow(guest_key(src)):
             await notice(gateway, event, NOTICE_RATE)
             return {"action": "skip", "reason": f"{NAME}: rate limited"}
-        if not leave_stale_session(gateway, session_store, src):
+        if not leave_stale_session(session_store):
             await notice(gateway, event, NOTICE_REVOKE_PENDING)
             return {"action": "skip", "reason": f"{NAME}: revoke incomplete"}
         return None
