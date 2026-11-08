@@ -356,11 +356,21 @@ def isolated_cwd(home: Path) -> Path:
     return path
 
 
+def platform_keys() -> list[str]:
+    """Every platform key a turn can resolve toolsets by; an unset key falls back to the full
+    ``hermes-<platform>`` toolset, so a tier profile pins each one (natively routed guests use them)."""
+    from hermes_cli.platforms import PLATFORMS
+
+    return list(PLATFORMS)
+
+
 def _narrow_config(path: Path, toolsets: list[str]) -> None:
     if not path.exists():
         return
     cfg = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-    cfg.setdefault("platform_toolsets", {})["api_server"] = list(toolsets)
+    pinned = cfg.setdefault("platform_toolsets", {})
+    for key in platform_keys():
+        pinned[key] = list(toolsets)
     mem = cfg.setdefault("memory", {})
     mem["memory_enabled"] = mem["user_profile_enabled"] = "memory" in toolsets
     mem["provider"] = ""
@@ -433,7 +443,7 @@ def preflight(owner_home: Path, after_setup: bool = True) -> list[dict]:
     key = owner_secrets.get("API_SERVER_KEY", "")
     out.append({
         "ok": not disabled and (len(key.strip()) >= 16 or not after_setup),
-        "text": "owner: API server is enabled with a key of 16+ characters (guests are answered through /p/<profile>/v1)",
+        "text": "owner: API server is enabled with a key of 16+ characters (guests outside the routes are answered through /p/<profile>/v1)",
         "fix": "hermes config set API_SERVER_ENABLED true  # and remove platforms.api_server.enabled: false"
         if disabled
         else "hermes config set API_SERVER_KEY <random 32 characters>",
@@ -506,6 +516,17 @@ def isolation_check(owner_home: Path, public_home: Path, gateway: bool = True) -
         "owner: your identity is set explicitly (settings.owners); without it even your own DM gets the public profile",
         "hermes salts-secrets setup --owner telegram:<your id>",
     )
+    from . import routes
+
+    route_problems = routes.problems(
+        owner_cfg, owners, routes.profile_name(owner_home), public_home.name, profile_secrets(owner_home)
+    )
+    add(
+        not route_problems,
+        "owner: profile_routes send only the owner to the owner profile and everyone else to the public one"
+        + ("" if not route_problems else " — " + "; ".join(route_problems)),
+        "hermes salts-secrets setup   (rewrites its routes)",
+    )
     if gateway:
         loaded, detail = routing_loaded(owner_home)
         add(loaded, "owner: the running gateway loaded the routing hook" + (f" ({detail})" if loaded else f" — {detail}"))
@@ -564,8 +585,12 @@ def audit(home: Path, allowed: frozenset = SAFE_TOOLSETS) -> list[str]:
     except (OSError, yaml.YAMLError) as exc:
         return [f"config.yaml cannot be parsed: {exc}"]
     problems = []
-    toolsets = ((cfg.get("platform_toolsets") or {}).get("api_server")) or []
-    bad = [t for t in toolsets if t not in allowed]
+    pinned = cfg.get("platform_toolsets") or {}
+    unset = [key for key in platform_keys() if not isinstance(pinned.get(key), list)]
+    if unset:
+        problems.append("platform_toolsets not pinned (full default toolset): " + ", ".join(unset))
+    toolsets = {t for key in platform_keys() if isinstance(pinned.get(key), list) for t in pinned[key]}
+    bad = sorted(str(t) for t in toolsets if t not in allowed)
     if bad:
         problems.append("toolsets that are owner-only are enabled: " + ", ".join(map(str, bad)))
     if str(((cfg.get("tools") or {}).get("tool_search") or {}).get("enabled", "")).lower() not in ("off", "false"):

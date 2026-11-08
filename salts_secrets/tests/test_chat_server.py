@@ -358,3 +358,93 @@ def test_doc_describes_this_install(tmp_path):
     d = c.get("/api/doc").json()
     assert d["viewer"] and d["viewer_hint"] == VIEW and d["facts"] == 0 and d["documents"] == []
     assert "web_search" in d["tools"] and "terminal" not in d["tools"]
+
+
+def test_hourly_turn_limit_spares_the_owner(tmp_path, monkeypatch):
+    class Done:
+        status_code = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def aiter_lines(self):
+            yield "data: [DONE]"
+
+        def stream(self, *a, **k):
+            return self
+
+    monkeypatch.setattr(server.httpx, "AsyncClient", lambda *a, **k: Done())
+    s = server.Settings({"SALT_OWNER_HOME": str(tmp_path / "owner"), "SALT_PUBLIC_HOME": str(tmp_path / "public"),
+                         "SALT_OWNER_PASSPHRASE_HASH": server.hash_passphrase(PASS), "SALT_SECRET": "x" * 32,
+                         "SALT_OWNER_KEY": "ok", "SALT_PUBLIC_KEY": "pk", "SALT_TURNS_PER_HOUR": "2"})
+    app = server.create_app(s)
+    guest = TestClient(app, client=("203.0.113.9", 1))
+    assert [guest.post("/api/chat", json={"message": "q"}).status_code for _ in range(3)] == [200, 200, 429]
+    assert TestClient(app, client=("203.0.113.9", 2)).post("/api/chat", json={"message": "q"}).status_code == 429
+    assert TestClient(app, client=("198.51.100.4", 1)).post("/api/chat", json={"message": "q"}).status_code == 200
+    owner = TestClient(app, client=("203.0.113.9", 3))
+    owner.post("/api/unlock", json={"passphrase": PASS})
+    assert owner.post("/api/chat", json={"message": "q"}).status_code == 200
+
+
+def test_turn_limit_counts_devices_behind_a_proxy_and_skips_refused_requests(tmp_path, monkeypatch):
+    class Done:
+        status_code = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def aiter_lines(self):
+            yield "data: [DONE]"
+
+        def stream(self, *a, **k):
+            return self
+
+    monkeypatch.setattr(server.httpx, "AsyncClient", lambda *a, **k: Done())
+    env = {"SALT_OWNER_HOME": str(tmp_path / "owner"), "SALT_PUBLIC_HOME": str(tmp_path / "public"),
+           "SALT_SECRET": "x" * 32, "SALT_OWNER_KEY": "ok", "SALT_PUBLIC_KEY": "pk", "SALT_TURNS_PER_HOUR": "1"}
+    app = server.create_app(server.Settings(env))
+    first, second = TestClient(app, client=("172.18.0.1", 1)), TestClient(app, client=("172.18.0.1", 2))
+    assert first.post("/api/chat", json={"message": "q"}).status_code == 200
+    assert first.post("/api/chat", json={"message": "q"}).status_code == 429
+    assert second.post("/api/chat", json={"message": "q"}).status_code == 200
+    keyless = TestClient(server.create_app(server.Settings(dict(env, SALT_PUBLIC_KEY=""))), client=("203.0.113.5", 1))
+    assert [keyless.post("/api/chat", json={"message": "q"}).status_code for _ in range(2)] == [503, 503]
+
+
+def test_negative_turn_limit_is_refused_at_startup(tmp_path):
+    with pytest.raises(ValueError, match="SALT_TURNS_PER_HOUR"):
+        server.Settings({"SALT_OWNER_HOME": str(tmp_path / "owner"), "SALT_PUBLIC_HOME": str(tmp_path / "public"),
+                         "SALT_SECRET": "x" * 32, "SALT_TURNS_PER_HOUR": "-1"})
+
+
+def test_unanswered_message_gives_the_turn_back(tmp_path, monkeypatch):
+    class Down:
+        status_code = 502
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def aread(self):
+            return b"bad gateway"
+
+        def stream(self, *a, **k):
+            return self
+
+    monkeypatch.setattr(server.httpx, "AsyncClient", lambda *a, **k: Down())
+    app = server.create_app(server.Settings({"SALT_OWNER_HOME": str(tmp_path / "owner"),
+                                             "SALT_PUBLIC_HOME": str(tmp_path / "public"), "SALT_SECRET": "x" * 32,
+                                             "SALT_PUBLIC_KEY": "pk", "SALT_TURNS_PER_HOUR": "1"}))
+    guest = TestClient(app, client=("203.0.113.7", 1))
+    for _ in range(3):
+        r = guest.post("/api/chat", json={"message": "q"})
+        assert r.status_code == 200 and "Hermes 502" in r.text

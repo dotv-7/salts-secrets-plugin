@@ -58,6 +58,17 @@ one gateway, one API key. Only the context is split, and it is split by **who is
 
 It is one Hermes plugin, `salts-secrets`, on top of an unmodified Hermes v0.23.0. No core file is patched.
 
+**Who reaches which profile is Hermes' job, not ours.** Hermes routes messages by sender with
+`gateway.profile_routes` ([#115642](https://github.com/NousResearch/hermes-agent/pull/115642), which fixed
+[#33548](https://github.com/NousResearch/hermes-agent/issues/33548)), and its multi-profile guide describes
+exactly this setup: a sender route for the privileged person, a platform-wide catch-all to a restricted
+profile. `setup` writes those routes, so guests get the public profile's native reply pipeline, streaming
+and media included. Routes decide where a message goes, not what the profile it lands in knows. That
+second half is Salt's Secrets: the approved list of facts and documents, guest rewrites, the projection
+guests read, revocation that deletes the guest sessions that may have seen an item, a tool ceiling on
+every platform, an isolation self-check and the dashboard to run it all. A prompt or a skill can ask an
+agent to keep a secret; this builds an agent that never had it.
+
 ![Two profiles in one Hermes: the route hook sends your DM to your agent and everyone else to the guest agent, which only reads what you approved](docs/diagrams/overview.svg)
 
 ## 30-second tour
@@ -89,7 +100,7 @@ Requires Hermes Agent **>= 0.23.0** with the API server enabled, and in-process 
 hermes plugins install salts-secrets          # into your own (owner) profile
 hermes salts-secrets setup --owner telegram:123456 --owner-name "your handle"
 hermes gateway restart
-hermes salts-secrets check                    # ISOLATION OK · 13 checks
+hermes salts-secrets check                    # ISOLATION OK · 14 checks
 ```
 
 From this repository instead of the catalog: `hermes plugins install dotv-7/salts-secrets-plugin/salts_secrets`.
@@ -106,13 +117,15 @@ them to `plugin-data/salts-secrets/reset-<time>/` and continues.
 1. creates the public profile (`<HERMES_HOME>/profiles/public/`) with its own SOUL.md, config.yaml,
    API key and an empty working directory, so no `AGENTS.md` or `.hermes.md` can be picked up;
 2. installs this same plugin there, where it acts as the guest side;
-3. turns on `gateway.multiplex_profiles`, so `/p/public/v1` is served by the same gateway;
+3. turns on `gateway.multiplex_profiles`, so `/p/public/v1` is served by the same gateway, and writes the
+   `gateway.profile_routes` above (it replaces only routes named `salts-secrets:*`; yours stay first) and
+   the `*_ALLOW_ALL_USERS` switch for each routed platform;
 4. stores the public profile's key in your profile as `SALTS_PUBLIC_API_KEY` through Hermes secrets;
 5. narrows the public toolsets, writes the public projection (empty until you publish) and runs the check.
 
 Then open the **Salt's Secrets** tab in the Hermes dashboard and tick what strangers may know.
 
-`check` also proves the plugin is live, not just configured: the routing hook writes a heartbeat (pid and
+`check` also proves the plugin is live, not just configured: the owner-side hook writes a heartbeat (pid and
 process start time) when the gateway registers it, and `check` is BROKEN unless that heartbeat belongs to
 the gateway named in `gateway_state.json`. Every failing line prints the command that fixes it.
 
@@ -120,13 +133,28 @@ the gateway named in `gateway_state.json`. Every failing line prints the command
 
 The plugin looks at the profile it is loaded in and plays one of two parts.
 
-**Owner profile** (`pre_gateway_dispatch`). Only your own DM reaches your agent. Every other inbound
-message, including yours in a group, channel or thread, is withheld and answered by the public profile
-through the local API server under its own session (`guest-<platform>-<chat>`). If the public profile
-cannot answer, the message is dropped with a short notice; it never falls through to your agent.
-Bots are ignored and each guest gets 20 messages an hour (`guest_rate_per_hour`).
+**Routes** (`gateway.profile_routes` in your config.yaml, written by `setup` for Telegram and Discord).
+Your user id goes to your profile, everyone else on that platform to the public profile. A route has no
+DM/group field, so on Telegram your route also pins `chat_id` (a Telegram DM's chat id is your user id):
+your messages in a group fall through to the catch-all and are answered as a guest. Routed guests are
+admitted by the bot that received them, which is yours, so `setup` sets `TELEGRAM_ALLOW_ALL_USERS` /
+`DISCORD_ALLOW_ALL_USERS`; `check` is BROKEN if a platform is open without its catch-all, if a route
+other than yours points at your profile, or if your Telegram route lacks `chat_id`.
 
-**Public profile** (`pre_tool_call`, a system prompt section, one tool). A default-deny tool gate with a
+**Owner profile** (`pre_gateway_dispatch`, the second line). Only your own DM reaches your agent. Whatever
+the routes still leave in your profile and is not your DM (your own messages in a Discord server, where a
+route cannot tell your DM channel from a server channel; platforms without routes) is withheld and
+answered by the public profile through the local API server under its own session
+(`guest-<platform>-<chat>`). If the public profile cannot answer, the message is dropped with a short
+notice; it never falls through to your agent.
+
+**Public profile, before the turn** (`pre_gateway_dispatch`). Bots are ignored and each guest gets 20
+messages an hour (`guest_rate_per_hour`); over the limit the guest gets a short notice and no turn.
+
+**Public profile, during the turn** (`pre_tool_call`, a system prompt section, one tool). Every platform
+key in `platform_toolsets` (Telegram, Discord, the API server and the rest) is pinned to the guest
+toolsets; a key left unset would fall back to Hermes' full platform toolset, and `check` fails on it. On
+top of that, a default-deny tool gate with a
 hard ceiling: no terminal, files, code, memory, sessions, skills, browser, cron, delegation or messaging,
 whatever the config says. No allowed tool takes a local path: any argument that starts with `/`, `~`,
 `./`, `file:`, `\\` or a drive letter is refused, and location arguments (`image_url(s)`, `url(s)`,
@@ -206,11 +234,40 @@ Under `plugins.entries.salts-secrets.settings` in your profile's config.yaml:
 - **Processes.** Revoking context runs `hermes sessions delete` for the affected guest sessions.
 - No self-update, no patching of Hermes, no code downloaded at runtime.
 
+## Isolation matrix
+
+[`tests/test_isolation_matrix.py`](salts_secrets/tests/test_isolation_matrix.py) checks every way a stranger can reach this Hermes. It runs the
+real gateway: `profile_routes` resolution, authorization by the receiving bot, and the profile scope the hooks
+and the turn run under. One owner home is set up with a memory, a session, a file and an unpublished
+memory item, published through `hermes salts-secrets sync`.
+
+| Ingress | Owner | Stranger |
+|---|---|---|
+| Telegram DM | owner profile | public profile |
+| Telegram group | public profile | public profile |
+| Discord DM | owner profile | public profile |
+| Discord server | owner hook withholds it, public profile answers | public profile |
+| Web chat (`/p/public/v1`) | owner passphrase, `/v1` | public profile |
+
+On every row that ends in the public profile, each probe below is refused:
+
+| Probe | Refused by |
+|---|---|
+| owner memory (`memory`, `MEMORY.md` path) | no memory toolset on that platform key, tool gate, memory off in the public config |
+| owner sessions (`session_search`, `state.db` path) | no session toolset, tool gate, separate `state.db` |
+| owner files (`read_file`, `search_files`, `terminal`, local paths in `vision_analyze` / `web_extract`) | no file/terminal toolset, tool gate, local-path argument block |
+| unpublished items | absent from the prompt section and from `public_notes_lookup`, and from every file in the public profile |
+
+Revocation is covered by `test_cli_sync_revocation_empties_public_store`. Unticking an item and running
+`sync` deletes the guest sessions from the public `state.db`.
+
 ## Limits
 
 - **Needs `plugins.isolation: in_process`.** Under the plugin host, `pre_gateway_dispatch` gets a
-  placeholder gateway and cannot reply, so guest messages are dropped (safe, but nothing is answered),
-  and `hermes salts-secrets` is not wired into the CLI.
+  placeholder gateway and cannot reply, so messages on the second-line path are dropped (safe, but
+  nothing is answered), and `hermes salts-secrets` is not wired into the CLI.
+- **Native routes cover Telegram and Discord.** Other platforms (Slack ids are case-sensitive, and
+  `--owner` lower-cases them) stay on the second-line path.
 - One public profile serves all guests. Guests are isolated from you and from each other's history, but
   share one persona and one projection.
 - On Telegram and Discord a guest session is keyed by chat, so a returning guest sees their own earlier
@@ -220,12 +277,11 @@ Under `plugins.entries.salts-secrets.settings` in your profile's config.yaml:
 
 ## What it does not do
 
-- **Groups share one guest session**, and the owner counts as a guest there: only your own DM reaches
-  your profile.
+- **The owner counts as a guest in groups**: only your own DM reaches your profile.
 - **Telegram and Discord guests keep their history** per chat (Hermes keys platform sessions by chat).
   The web chat forgets on every page load.
-- **Guest messages skip the normal reply pipeline**: the routing hook forwards text to the local API and
-  sends one reply, so guests get no streaming and no media (images, voice). Next step.
+- **The second-line path is text only**: your own Discord server messages and guests on unrouted
+  platforms are forwarded as text to the local API and get one reply, without streaming or media.
 - **Revocation is not atomic for a request already running**: a reply being generated while you untick
   an item can still use it; the session is purged right after.
 - **External memory provider contents are not listed** on the Context tab. The tab shows whether your
@@ -237,13 +293,14 @@ Under `plugins.entries.salts-secrets.settings` in your profile's config.yaml:
 
 Admin and User tiers (invited people with their own profile, memory and sessions) are designed but not
 implemented: this release has two rooms, Owner and Guest. `/perm` in the demo shows them greyed out as
-planned. Also next: streaming and media for platform guests.
+planned.
 
 ## Layout
 
 ```
 salts_secrets/            the plugin (catalog subdir)
-  route.py                owner side: who reaches which profile
+  routes.py               the gateway.profile_routes setup writes and check audits
+  route.py                pre_gateway_dispatch: guest rate limit (public), second-line routing (owner)
   gate.py                 public side: tool allowlist, fail-closed
   public_context.py       public side: prompt section and public_notes_lookup
   context.py              scan context sources, approvals, projection, publish (revocation)
@@ -254,7 +311,7 @@ salts_secrets/            the plugin (catalog subdir)
   cli.py                  hermes salts-secrets setup | check | sync | guests
   dashboard/              the dashboard tab and its API
   profile/                SOUL.md and config.yaml templates for the public profile
-  tests/                  pytest salts_secrets/tests demo, against Hermes v0.23.0 (CI: Python 3.11 to 3.14)
+  tests/                  pytest salts_secrets/tests demo (CI: Python 3.11 to 3.14)
 demo/                     the Salt demo behind https://salt.dotv.io/ (not part of the plugin)
 ```
 

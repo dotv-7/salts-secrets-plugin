@@ -1,11 +1,16 @@
-"""Owner profile: send every message that is not the owner's own DM to the public profile.
+"""Guest routing guards on both sides of Hermes' own ``gateway.profile_routes``.
 
-Only the owner's private DM is an owner conversation. Strangers' DMs, groups, channels and threads
-(including the owner's own messages there) are answered by the public profile, which has none of the
-owner's memory, files or tools. The owner agent never sees them: the hook returns ``skip``.
+``setup`` writes the routes: the owner's DM goes to the owner profile, everything else on the platform
+to the public profile, so guests run through the native reply pipeline of the public profile. Under a
+multiplexed gateway ``pre_gateway_dispatch`` fires in the profile a message was routed to, hence two hooks:
 
-The hook never raises. The gateway treats a raising hook as "dispatch normally", which would hand the
-message to the owner agent, so every failure on the guest path still ends in ``skip``.
+- public profile (``make_guest_hook``): per-guest hourly limit and bot authors, before the turn;
+- owner profile (``make_hook``): whatever is still in the owner profile and is not the owner's own DM
+  (the owner speaking in a Discord server, where no route can tell the owner's DM from a group; a
+  platform without routes) is answered by the public profile over its local API and skipped.
+
+The owner hook never raises. The gateway treats a raising hook as "dispatch normally", which would hand
+the message to the owner agent, so every failure on that path still ends in ``skip``.
 """
 
 from __future__ import annotations
@@ -146,6 +151,11 @@ async def ask_public_profile(settings: Settings, session_id: str, text: str) -> 
 
 async def _reply(gateway: Any, event: Any, content: str) -> None:
     src = event.source
+    delivery = getattr(gateway, "_delivery_adapter_for", None)
+    adapter = delivery(src) if callable(delivery) else None
+    if adapter is not None:
+        await adapter.send(src.chat_id, content[:REPLY_MAX], reply_to=getattr(event, "message_id", None))
+        return
     adapters = getattr(gateway, "adapters", {}) or {}
     adapter = adapters.get(src.platform) or next(
         (a for key, a in adapters.items() if platform_name(key) == platform_name(src.platform)), None
@@ -161,6 +171,33 @@ def _live_session(settings: Settings, session_id: str) -> str:
     from .home import current
 
     return guests.live_session_id(current() / "profiles" / settings.public_profile, session_id)
+
+
+def guest_key(src: Any) -> str:
+    return f"{platform_name(src.platform)}:{src.user_id or src.chat_id}"
+
+
+def make_guest_hook(limiter: RateLimiter):
+    """Public profile: guards for guests the native routes delivered here. ``None`` lets the turn run."""
+
+    async def hook(event: Any, gateway: Any = None, **_: Any) -> Optional[dict]:
+        src = event.source
+        if getattr(src, "is_bot", False):
+            return {"action": "skip", "reason": f"{NAME}: bot author"}
+        if limiter.allow(guest_key(src)):
+            return None
+        try:
+            await _reply(gateway, event, NOTICE_RATE)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("%s: could not send the rate notice: %s", NAME, exc)
+        return {"action": "skip", "reason": f"{NAME}: rate limited"}
+
+    return hook
+
+
+def register_guest(ctx) -> None:
+    rate = max(1, int(ctx.get_config("guest_rate_per_hour", default=20) or 20))
+    ctx.register_hook("pre_gateway_dispatch", make_guest_hook(RateLimiter(rate)))
 
 
 def make_hook(settings: Settings, limiter: RateLimiter, asker=ask_public_profile):
@@ -181,7 +218,7 @@ def make_hook(settings: Settings, limiter: RateLimiter, asker=ask_public_profile
             if not text:
                 await _reply(gateway, event, NOTICE_TEXT_ONLY)
                 return skip("no text")
-            if not limiter.allow(f"{platform_name(src.platform)}:{src.user_id or src.chat_id}"):
+            if not limiter.allow(guest_key(src)):
                 await _reply(gateway, event, NOTICE_RATE)
                 return skip("rate limited")
             if not settings.public_key:

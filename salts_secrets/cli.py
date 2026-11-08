@@ -12,7 +12,7 @@ import time
 from pathlib import Path
 
 from . import _yaml as yaml
-from . import context, guests, tiers
+from . import context, guests, routes, tiers
 from .home import NAME, PUBLIC_KEY_ENV, current, data_dir
 
 PLUGIN_DIR = Path(__file__).resolve().parent
@@ -167,6 +167,8 @@ def cmd_setup(args: argparse.Namespace) -> int:
         cfg["providers"] = owner_cfg["providers"]
     _enable(cfg)
     _settings(cfg).update(role="public", public_profile=pub.name, owner_name=owner_name)
+    if _settings(owner_cfg).get("guest_rate_per_hour"):
+        _settings(cfg)["guest_rate_per_hour"] = _settings(owner_cfg)["guest_rate_per_hour"]
     _write_yaml(pub / "config.yaml", cfg)
 
     target = pub / "plugins" / NAME
@@ -179,9 +181,17 @@ def cmd_setup(args: argparse.Namespace) -> int:
     _enable(owner_cfg)
     owner_cfg.setdefault("gateway", {})["multiplex_profiles"] = True
     _settings(owner_cfg).update(public_profile=pub.name, owner_name=owner_name, owners=owners)
+    written = routes.apply(owner_cfg, owners, routes.profile_name(owner), pub.name)
     _write_yaml(owner / "config.yaml", owner_cfg)
     say("gateway.multiplex_profiles on, plugin enabled")
     say("owner identities: " + ", ".join(owners))
+    for route in written:
+        who = f"owner {route['user_id']}" if route.get("user_id") else "everyone else"
+        say(f"profile route: {route['platform']} {who} -> {route['profile']}")
+    for platform in sorted({r["platform"] for r in written}):
+        # Routed guests are admitted by the receiving bot, i.e. the owner profile's allowlist.
+        _hermes("config", "set", routes.ALLOW_ALL_ENV[platform], "true")
+        say(f"{routes.ALLOW_ALL_ENV[platform]}=true (the catch-all route takes every non-owner to {pub.name})")
 
     public_key = tiers.profile_secrets(pub).get("API_SERVER_KEY") or f"salts-public-{secrets.token_hex(16)}"
     _hermes("config", "set", "API_SERVER_KEY", public_key, profile=pub.name)

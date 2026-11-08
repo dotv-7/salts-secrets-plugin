@@ -117,7 +117,9 @@ def test_isolation_check_passes_only_when_every_condition_holds(tmp_path):
         (home / "plugins/salts-secrets/__init__.py").write_text("")
     (owner / "config.yaml").write_text(
         "plugins:\n  enabled: [salts-secrets]\n  entries:\n    salts-secrets:\n      settings:\n"
-        "        owners: [telegram:42]\ngateway:\n  multiplex_profiles: true\n"
+        "        owners: [telegram:42]\ngateway:\n  multiplex_profiles: true\n  profile_routes:\n"
+        "  - {name: 'salts-secrets:owner-telegram-42', platform: telegram, user_id: '42', chat_id: '42', profile: default}\n"
+        "  - {name: 'salts-secrets:guests-telegram', platform: telegram, profile: public}\n"
     )
     (owner / ".env").write_text("API_SERVER_KEY=owner-key-0123456789\nSALTS_PUBLIC_API_KEY=public-key-0123456789\n")
     (pub / ".env").write_text("API_SERVER_KEY=public-key-0123456789\n")
