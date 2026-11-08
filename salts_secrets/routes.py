@@ -11,6 +11,10 @@ bare ``user_id`` route would also pull the owner's group messages into the owner
   owner hook (``route.make_hook``) answers the owner's server messages through the public profile.
 
 Other platforms get no routes; there the owner hook keeps answering guests over the local API.
+
+The Discord adapter also checks ``DISCORD_ALLOWED_USERS`` itself, before any route, and ignores
+``DISCORD_ALLOW_ALL_USERS`` while that list names anyone: a stranger never reaches the catch-all unless
+the list holds ``*`` (``open_allowlist``).
 """
 
 from __future__ import annotations
@@ -22,6 +26,13 @@ from .home import NAME
 PREFIX = f"{NAME}:"
 ALLOW_ALL_ENV = {"telegram": "TELEGRAM_ALLOW_ALL_USERS", "discord": "DISCORD_ALLOW_ALL_USERS"}
 DM_CHAT_IS_USER = {"telegram"}
+ADAPTER_ALLOWLIST_ENV = {"discord": "DISCORD_ALLOWED_USERS"}
+
+
+def open_allowlist(raw: str) -> str:
+    """The allowlist with ``*`` added, or "" when it already admits everyone (empty, or holding ``*``)."""
+    entries = [e.strip() for e in str(raw or "").split(",") if e.strip()]
+    return "" if not entries or "*" in entries else ",".join(entries + ["*"])
 
 
 def profile_name(home: Path) -> str:
@@ -76,6 +87,10 @@ def problems(cfg: dict, owners, owner_profile: str, public: str, secrets: dict) 
         )
         if platform in ids and not catch_all:
             out.append(f"{platform}: no catch-all route to {public}")
+        listed = ADAPTER_ALLOWLIST_ENV.get(platform)
+        if catch_all and listed and open_allowlist(secrets.get(listed, "")):
+            out.append(f"{platform}: {listed} names users but not '*', so the adapter drops every stranger "
+                       f"before the catch-all route to {public}")
         allow_all = str(secrets.get(ALLOW_ALL_ENV[platform], "")).strip().lower() in ("1", "true", "yes", "on")
         if allow_all and not catch_all:
             out.append(f"{platform}: {ALLOW_ALL_ENV[platform]} is on without a catch-all route to {public}")

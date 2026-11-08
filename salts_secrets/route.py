@@ -4,7 +4,8 @@
 to the public profile, so guests run through the native reply pipeline of the public profile. Under a
 multiplexed gateway ``pre_gateway_dispatch`` fires in the profile a message was routed to, hence two hooks:
 
-- public profile (``make_guest_hook``): per-guest hourly limit and bot authors, before the turn;
+- public profile (``make_guest_hook``): per-guest hourly limit, bot authors, and a guest whose session a
+  failed purge left behind (moved to a fresh session, or refused while that cannot be done), before the turn;
 - owner profile (``make_hook``): whatever is still in the owner profile and is not the owner's own DM
   (the owner speaking in a Discord server, where no route can tell the owner's DM from a group; a
   platform without routes) is answered by the public profile over its local API and skipped.
@@ -30,6 +31,10 @@ log = logging.getLogger(__name__)
 NOTICE_UNAVAILABLE = "The guest entrance is temporarily unavailable. Please try again in a minute."
 NOTICE_RATE = "You have reached the guest message limit for this hour. Please come back later."
 NOTICE_TEXT_ONLY = "I can only read text here."
+NOTICE_REVOKE_PENDING = (
+    "The owner withdrew something this conversation used and the cleanup is not finished. "
+    "Please send your message again in a minute."
+)
 REPLY_MAX = 3500
 
 Getter = Callable[[str, str], str]
@@ -177,20 +182,51 @@ def guest_key(src: Any) -> str:
     return f"{platform_name(src.platform)}:{src.user_id or src.chat_id}"
 
 
+def leave_stale_session(gateway: Any, session_store: Any, src: Any) -> bool:
+    """Move a guest off a session a failed purge left behind, before the gateway resumes it.
+
+    ``False`` when that cannot be settled (no store, unknown key, reset refused) while a purge is still
+    incomplete: the caller then refuses the turn rather than risk serving the revoked transcript."""
+    from . import guests
+
+    stale = guests.stale_ids(current())
+    if not stale:
+        return True
+    try:
+        key = gateway._session_key_for_source(src)
+        if session_store.peek_session_id(key) not in stale:
+            return True
+        if session_store.reset_session(key) is None:
+            return False
+        evict = getattr(gateway, "_evict_cached_agent", None)
+        if callable(evict):
+            evict(key)
+        return True
+    except Exception as exc:  # noqa: BLE001
+        log.warning("%s: cannot tell whether this guest is on a revoked session (%s)", NAME, exc)
+        return False
+
+
 def make_guest_hook(limiter: RateLimiter):
     """Public profile: guards for guests the native routes delivered here. ``None`` lets the turn run."""
 
-    async def hook(event: Any, gateway: Any = None, **_: Any) -> Optional[dict]:
+    async def notice(gateway: Any, event: Any, text: str) -> None:
+        try:
+            await _reply(gateway, event, text)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("%s: could not send a notice: %s", NAME, exc)
+
+    async def hook(event: Any, gateway: Any = None, session_store: Any = None, **_: Any) -> Optional[dict]:
         src = event.source
         if getattr(src, "is_bot", False):
             return {"action": "skip", "reason": f"{NAME}: bot author"}
-        if limiter.allow(guest_key(src)):
-            return None
-        try:
-            await _reply(gateway, event, NOTICE_RATE)
-        except Exception as exc:  # noqa: BLE001
-            log.warning("%s: could not send the rate notice: %s", NAME, exc)
-        return {"action": "skip", "reason": f"{NAME}: rate limited"}
+        if not limiter.allow(guest_key(src)):
+            await notice(gateway, event, NOTICE_RATE)
+            return {"action": "skip", "reason": f"{NAME}: rate limited"}
+        if not leave_stale_session(gateway, session_store, src):
+            await notice(gateway, event, NOTICE_REVOKE_PENDING)
+            return {"action": "skip", "reason": f"{NAME}: revoke incomplete"}
+        return None
 
     return hook
 

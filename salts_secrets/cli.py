@@ -192,6 +192,12 @@ def cmd_setup(args: argparse.Namespace) -> int:
         # Routed guests are admitted by the receiving bot, i.e. the owner profile's allowlist.
         _hermes("config", "set", routes.ALLOW_ALL_ENV[platform], "true")
         say(f"{routes.ALLOW_ALL_ENV[platform]}=true (the catch-all route takes every non-owner to {pub.name})")
+        listed = routes.ADAPTER_ALLOWLIST_ENV.get(platform)
+        opened = routes.open_allowlist(tiers.profile_secrets(owner).get(listed, "")) if listed else ""
+        if opened:
+            _hermes("config", "set", listed, opened)
+            say(f"{listed}={opened} (the {platform} adapter ignores {routes.ALLOW_ALL_ENV[platform]} "
+                "while its list names anyone)")
 
     public_key = tiers.profile_secrets(pub).get("API_SERVER_KEY") or f"salts-public-{secrets.token_hex(16)}"
     _hermes("config", "set", "API_SERVER_KEY", public_key, profile=pub.name)

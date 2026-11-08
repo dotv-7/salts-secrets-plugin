@@ -69,6 +69,13 @@ guests read, revocation that deletes the guest sessions that may have seen an it
 every platform, an isolation self-check and the dashboard to run it all. A prompt or a skill can ask an
 agent to keep a secret; this builds an agent that never had it.
 
+**Tool gates are a different layer, and they stack.** A per-sender tool gate such as
+[hermes-clearance](https://github.com/yuzuru99/hermes-clearance) decides which tools each sender may call
+inside one profile; by its own README it is "not a sandbox". It stops a guest's tool call, but the owner's
+MEMORY.md and USER.md are still in that profile's system prompt, so a guest who simply asks is answered or
+refused by the model's discretion. Salt's Secrets moves guests to a profile that never loaded that context.
+The two compose: Clearance for who may use which tool, Salt's Secrets for what a stranger can know.
+
 ![Two profiles in one Hermes: the route hook sends your DM to your agent and everyone else to the guest agent, which only reads what you approved](../docs/diagrams/overview.svg)
 
 ## 30-second tour
@@ -170,7 +177,7 @@ open anything in your profile.
   a rewritten guest version. An approved item that you later edit drops out of the projection until you
   approve it again. Unticking revokes: guest sessions that may have seen the item are archived for you
   and deleted from the public store, whether you publish from the dashboard or with
-  `hermes salts-secrets sync` (both go through `context.publish`). A session that cannot be deleted is marked stale: its guest is moved to a fresh session at once, the publish result says the revoke is incomplete, and `check` fails until a later publish deletes it. A guest version replaces the title as well, so a file name or heading never crosses with a rewrite.
+  `hermes salts-secrets sync` (both go through `context.publish`). A session that cannot be deleted is marked stale: its guest is moved to a fresh session at once on both ingress paths (the native route resets the gateway's session for that chat before the turn, and refuses the turn with a "send it again" notice when it cannot), the publish result says the revoke is incomplete, and `check` fails until a later publish deletes it. A guest version replaces the title as well, so a file name or heading never crosses with a rewrite.
 - *Triage* (on the Context tab): rules first, then your model, sort every publishable item into
   **A** publish as-is, **B** needs a guest rewrite, **C** never public. The rules
   ([`privacy_rules.yaml`](privacy_rules.yaml): credentials, identity and contact, assets,
@@ -264,6 +271,40 @@ On every row that ends in the public profile, each probe below is refused:
 Revocation is covered by `test_cli_sync_revocation_empties_public_store`. Unticking an item and running
 `sync` deletes the guest sessions from the public `state.db`.
 
+The full chain is covered by [`demo/e2e/canary_matrix.py`](../demo/e2e/canary_matrix.py), with results in
+[`docs/isolation-report.md`](../docs/isolation-report.md). It runs one real `hermes gateway run`, set up by
+`setup` and `sync`, with the real Telegram and Discord adapters talking to loopback stand-ins of the platform
+APIs, the web ingress, and a fake model that records every request body, auxiliary calls included. Fresh
+canaries go into MEMORY.md, USER.md, the workspace, a private folder, a skill and an owner session, and only
+a small subset is approved. On every guest row, no unapproved canary appears in any request the gateway sent
+to the model, and no owner tool is offered. The first run found that the Discord adapter checks
+`DISCORD_ALLOWED_USERS` before any route and ignores `DISCORD_ALLOW_ALL_USERS` while that list names anyone.
+Strangers never reached the catch-all, so `setup` now adds `*` to that list, and `check` flags a list without it.
+
+## Evidence
+
+One useful task under three setups, produced by [`demo/e2e/controls.py`](../demo/e2e/controls.py) at commit
+`4b1ed040ba` (full output in [`docs/controls-report.md`](../docs/controls-report.md)). A stranger on Telegram
+asks how Salt checks a bridge, which is answerable from her published method. The same stranger then probes for her
+private data, the owner takes the method back, and the stranger writes once more. Each setup runs on a real
+gateway with the real Telegram adapter, against a loopback API stand-in and a fake model that records every request.
+
+| | One profile + tool allowlist + never-share prompt | Native two profiles, method copied by hand | Salt's Secrets (setup, approve, sync, revoke) |
+|---|---|---|---|
+| Task material reached the model | yes | yes | yes |
+| Private canaries in the stranger's model requests | memory, user | memory, private, skill, user, workspace | none |
+| Owner tools that ran for the stranger | none | read_file, search_files | none |
+| Method still in requests after revoke | yes | yes | no |
+| Model requests (mean body size) | 10 (12,212 chars) | 10 (49,136 chars) | 9 (11,934 chars) |
+| Gateway latency per turn, median | 1.00 s | 1.00 s | 1.00 s |
+| Failures | none | none | none |
+| Owner's steps | 4 | 6 | 2 |
+
+With tools denied, setup A still sends the owner's memory to the model on a stranger's behalf, because MEMORY.md
+and USER.md are in the prompt. Setup B keeps the prompt clean, but a hand-made profile keeps its file tools, so
+`read_file` and `search_files` reach the owner's home. In both, the method stays in the stranger's session after it
+is deleted. The model is scripted: latency is gateway overhead, and cost is shown as request size.
+
 ## Limits
 
 - **Needs `plugins.isolation: in_process`.** Under the plugin host, `pre_gateway_dispatch` gets a
@@ -285,8 +326,8 @@ Revocation is covered by `test_cli_sync_revocation_empties_public_store`. Untick
   The web chat forgets on every page load.
 - **The second-line path is text only**: your own Discord server messages and guests on unrouted
   platforms are forwarded as text to the local API and get one reply, without streaming or media.
-- **Revocation is not atomic for a request already running**: a reply being generated while you untick
-  an item can still use it; the session is purged right after.
+- **Revocation is not atomic for a request already running**: revocation purges stored guest sessions;
+  text already sent to the model provider or already delivered cannot be recalled.
 - **External memory provider contents are not listed** on the Context tab. The tab shows whether your
   profile uses one; the public side configures none (a `check` condition), so nothing from it reaches guests.
 - **Inference across facts** is only partly covered: the combination rule flags a batch that publishes two

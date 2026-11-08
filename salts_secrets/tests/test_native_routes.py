@@ -62,6 +62,28 @@ def test_problems_need_a_catch_all_wherever_the_bot_is_open():
                            OWNERS, "default", "public", {"TELEGRAM_ALLOW_ALL_USERS": "true"}) == []
 
 
+def test_a_discord_allowlist_without_star_keeps_strangers_from_the_catch_all():
+    cfg = {"gateway": {"profile_routes": routes.guest_routes(OWNERS, "default", "public")}}
+    found = routes.problems(cfg, OWNERS, "default", "public", {"DISCORD_ALLOWED_USERS": "7"})
+    assert len(found) == 1 and "DISCORD_ALLOWED_USERS" in found[0]
+    assert routes.problems(cfg, OWNERS, "default", "public", {"DISCORD_ALLOWED_USERS": "7,*"}) == []
+    assert routes.open_allowlist("7, 8") == "7,8,*" and routes.open_allowlist("") == ""
+
+
+def test_the_discord_adapter_drops_strangers_unless_its_allowlist_holds_star(monkeypatch):
+    """Why setup opens DISCORD_ALLOWED_USERS: the adapter filters before routing and skips allow-all."""
+    pytest.importorskip("discord")
+    from plugins.platforms.discord.adapter import DiscordAdapter
+
+    adapter = object.__new__(DiscordAdapter)
+    adapter._allowed_role_ids = set()
+    monkeypatch.setattr(DiscordAdapter, "_discord_allow_all_users", lambda self: True)
+    adapter._allowed_user_ids = {"7"}
+    assert adapter._is_allowed_user("7", is_dm=True) and not adapter._is_allowed_user("9", is_dm=True)
+    adapter._allowed_user_ids = set(routes.open_allowlist("7").split(","))
+    assert adapter._is_allowed_user("9", is_dm=True)
+
+
 def test_setup_writes_routes_and_opens_the_routed_platforms(tmp_path, monkeypatch):
     home = tmp_path / "owner"
     home.mkdir()
@@ -74,7 +96,7 @@ def test_setup_writes_routes_and_opens_the_routed_platforms(tmp_path, monkeypatc
 
     monkeypatch.setattr(cli, "current", lambda: home)
     monkeypatch.setattr(cli, "_hermes", fake_hermes)
-    monkeypatch.setattr(tiers, "profile_secrets", lambda h: {})
+    monkeypatch.setattr(tiers, "profile_secrets", lambda h: {"DISCORD_ALLOWED_USERS": "7"} if h == home else {})
     import argparse
 
     cli.cmd_setup(argparse.Namespace(public=None, owner=OWNERS + ["slack:U1"], owner_name="salt", reset_public=False))
@@ -82,6 +104,7 @@ def test_setup_writes_routes_and_opens_the_routed_platforms(tmp_path, monkeypatc
     assert cfg["gateway"]["profile_routes"] == routes.guest_routes(OWNERS, "default", "public")
     opened = {args[2] for _, args in calls if args[:2] == ("config", "set") and args[2].endswith("_ALLOW_ALL_USERS")}
     assert opened == {"TELEGRAM_ALLOW_ALL_USERS", "DISCORD_ALLOW_ALL_USERS"}
+    assert (None, ("config", "set", "DISCORD_ALLOWED_USERS", "7,*")) in calls
 
 
 def test_every_platform_toolset_is_pinned_to_the_guest_tier(tmp_path):
