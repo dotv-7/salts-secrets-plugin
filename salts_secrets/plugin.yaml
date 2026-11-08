@@ -1,5 +1,5 @@
 name: salts-secrets
-version: "0.3.0"
+version: "0.4.0"
 requires_hermes: ">=0.23.0"
 description: >-
   Let strangers talk to your Hermes without reaching your private memory. Only your own DM reaches

@@ -359,9 +359,9 @@ def isolated_cwd(home: Path) -> Path:
 def platform_keys() -> list[str]:
     """Every platform key a turn can resolve toolsets by; an unset key falls back to the full
     ``hermes-<platform>`` toolset, so a tier profile pins each one (natively routed guests use them)."""
-    from hermes_cli.platforms import PLATFORMS
+    from gateway.config import Platform
 
-    return list(PLATFORMS)
+    return sorted({p.value for p in Platform} | {"cli", "cron"})
 
 
 def _narrow_config(path: Path, toolsets: list[str]) -> None:
