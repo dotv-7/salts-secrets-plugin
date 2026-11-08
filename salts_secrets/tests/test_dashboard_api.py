@@ -106,5 +106,6 @@ def test_opening_the_tab_sends_nothing_to_the_model(client, monkeypatch):
     monkeypatch.setattr("_salts_secrets_dashboard.classify.openai_asker", lambda settings: ask)
     opened = http.post("/api/plugins/salts-secrets/classify", json={"rules_only": True}).json()
     assert sent == [] and opened["model"] is False and opened["items"]
+    assert not any("no model configured" in it["reason"] for it in opened["items"].values())
     http.post("/api/plugins/salts-secrets/classify", json={})
     assert sent

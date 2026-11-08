@@ -26,7 +26,7 @@ CACHE_FILE = "classifications.json"
 BATCH = 20
 TEXT_MAX = 900
 PARALLEL = 4
-NO_MODEL = "no model configured: rules only, so nothing is A"
+UNCLASSIFIED = "not checked by the model yet: rules only, so it is not A"
 
 Ask = Callable[[str, str], Awaitable[str]]
 
@@ -126,7 +126,7 @@ def combine(screen: dict, model: Optional[dict], rules: privacy.Ruleset) -> dict
         first = names.get(screen["rules_hit"][0])
         reason = (first.description if first else "") or f"rule {screen['rules_hit'][0]}"
     else:
-        reason = (model or {}).get("reason") or NO_MODEL
+        reason = (model or {}).get("reason") or UNCLASSIFIED
     return {"tier": tier, "reason": reason, "rules_hit": screen["rules_hit"], "rule_floor": screen["floor"],
             "model_tier": model_tier or "", "quasi": screen.get("quasi", [])}
 
