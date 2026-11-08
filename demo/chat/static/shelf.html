@@ -75,13 +75,6 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 /* guests */
 .guests{margin-top:26px;border-top:1px solid var(--blue);padding-top:16px}
 .guests .gh{display:flex;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap}
-.gs{border:1px dashed var(--muted);padding:10px 12px;margin-bottom:10px}
-.gs .gm{font:400 11px/1 var(--mono);color:var(--muted);letter-spacing:.08em;margin-bottom:6px;text-transform:uppercase}
-.gs .gq{font:400 14px/1.5 var(--serif);margin:2px 0}
-.gs .gq.probe::before{content:"PROBE";font:400 10px/1 var(--mono);color:#fff;background:var(--blue);padding:2px 4px;margin-right:8px;letter-spacing:.08em}
-.gs .gr{font:400 11px/1.5 var(--mono);color:var(--blue);letter-spacing:.04em;margin-top:4px}
-.gs .ga{color:var(--muted);font-size:13px;margin:0 0 6px 16px;white-space:pre-wrap}
-.guests .empty{font:400 13px/1.5 var(--serif);color:var(--muted)}
 /* tally */
 .tally{margin-top:26px;border-top:1px solid var(--blue);padding-top:16px;display:grid;grid-template-columns:minmax(0,1fr) 230px minmax(0,1fr);gap:22px;align-items:start}
 .tally .big{font:400 clamp(44px,5vw,78px)/1 var(--disp);color:var(--blue);text-transform:uppercase}
@@ -191,7 +184,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 </style></head><body>
 <div class="grain"></div>
 <div class="top"><div class="l"><span class="lbl">LENA MOREAU</span><span class="line"></span><span class="lbl">CONTEXT</span></div>
-  <div class="r"><span class="sbox"><input id="q" type="search" placeholder="SEARCH HER 3,800 ENTRIES…" autocomplete="off"><div class="sr" id="sr"></div></span><a class="lbl" href="/">CHAT</a><a class="lbl" href="/perm">PERMISSIONS</a><a class="lbl" href="/trace">TRACE</a><a class="lbl" href="/doc">DOC</a><span class="lbl" id="count"></span></div></div>
+  <div class="r"><span class="sbox"><input id="q" type="search" placeholder="SEARCH HER 3,800 ENTRIES…" autocomplete="off"><div class="sr" id="sr"></div></span><a class="lbl" href="/">CHAT</a><a class="lbl" href="/perm">PERMISSIONS</a><a class="lbl" href="/guests">GUESTS</a><a class="lbl" href="/trace">TRACE</a><a class="lbl" href="/doc">DOC</a><span class="lbl" id="count"></span></div></div>
 
 <section class="hero">
   <div class="eyebrow"><span class="lbl">WHAT EACH SESSION IS BUILT FROM</span><span class="line" style="width:40px;height:1px;background:currentColor"></span><span class="lbl" id="hero-n"></span><span class="line" style="width:40px;height:1px;background:currentColor"></span><button class="lbl box" id="pol-open">WHAT MAY BE SHARED · EDIT</button></div>
@@ -209,7 +202,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
   <div class="triage" id="triage"></div>
   <div class="g" id="rows"></div>
   <div class="tally" id="tally"></div>
-  <div class="guests" id="guests"><div class="gh"><span class="lbl">WHAT GUESTS ASKED · LENA ONLY · READ FROM THE PUBLIC STORE, NEVER ENTERS A SESSION</span><span class="lbl" id="g-count"></span></div><div id="g-rows"></div></div>
+  <div class="guests" id="guests"><div class="gh"><a class="lbl" href="/guests">WHAT GUESTS ASKED →</a><span class="lbl" id="g-count"></span></div></div>
   <div class="foot"><span class="lbl">PRIVATE BY DEFAULT · ONLY TICKED ENTRIES CROSS</span><span class="lbl">CLICK A BLOCK TO OPEN IT · ESC CLOSE</span></div>
 </div>
 
@@ -357,7 +350,10 @@ async function draftOne(id,force){if(busy.has(id)||demo)return;busy.add(id);rero
 function rerow(id){const row=document.querySelector(`.ent[data-id="${CSS.escape(id)}"]`);if(row&&byId[id]){row.outerHTML=entHTML(byId[id]);fitAll();}}
 // Guest boxes grow with their text, like the raw original on the left: no scrollbar, no resize grip.
 function fit(ta){ta.style.height='auto';ta.style.height=(ta.scrollHeight+2)+'px';}
-function fitAll(){document.querySelectorAll('#d-list textarea').forEach(fit);}
+function fitAll(){document.querySelectorAll('#d-list textarea').forEach(fit);alignAll();}
+// The guest box starts on the same line as the raw original, whatever the title, path and tier lines above it take.
+function alignAll(){const wide=!matchMedia('(max-width:900px)').matches;document.querySelectorAll('#d-list .ent').forEach(e=>{const a=e.querySelector('pre.raw'),k=e.querySelector('.gst .k'),b=e.querySelector('.gst textarea');if(!a||!k||!b)return;a.style.marginTop=k.style.marginTop='';if(!wide)return;const d=a.getBoundingClientRect().top-b.getBoundingClientRect().top;if(d>0)k.style.marginTop=d+'px';else if(d<0)a.style.marginTop=(8-d)+'px';});}
+addEventListener('resize',alignAll);
 function entHTML(it){const on=pub.has(it.id),lk=!it.publishable,chg=it.status==='changed'&&!on;
   const st=lk?'locked':on?'public':chg?'changed':'private';
   const left=`<div class="orig"><input type="checkbox" ${on?'checked':''} ${lk?'disabled':''} title="${lk?'this kind of content cannot be published':on?'untick to pull it back':'tick to give it to the guest'}"><div><div class="t">${short(it.title)}<span class="st ${st}">${st}</span></div><div class="path">${esc(it.path||it.source)}${it.note?' · '+esc(it.note):''}</div>${tierHTML(it)}<pre class="raw ${texts[it.id]===undefined?'wait':''}">${texts[it.id]===undefined?'loading raw…':markHTML(texts[it.id]===undefined?'':(texts[it.id]||'(empty)').length>FOLD&&!unfold.has(it.id)?(texts[it.id].slice(0,FOLD)+'\n…'):(texts[it.id]||'(empty)'))}</pre>${texts[it.id]&&texts[it.id].length>FOLD?`<button class="more">${unfold.has(it.id)?'Show less':`Show all · ${fmt(texts[it.id].length)} chars`}</button>`:''}${texts[it.id]!==undefined&&on?chips(texts[it.id],'nothing flagged in the original'):''}</div></div>`;
@@ -465,14 +461,8 @@ $('#d-list').addEventListener('click',e=>{const m=e.target.closest('.mic');if(!m
 load();
 fetch('/api/me').then(r=>r.json()).then(j=>{if(!j.readonly)return;document.body.classList.add('ro');const n=document.createElement('div');n.className='robar';n.textContent='READ ONLY · you see what Lena sees; saving, drafting and publishing are off';document.body.prepend(n);}).catch(()=>{});
 
-async function loadGuests(){const box=$('#g-rows');if(!box)return;try{const r=await fetch('/api/board/guests');if(!r.ok)throw 0;const j=await r.json();const c=j.counts||{};
-  $('#g-count').textContent=`${c.sessions||0} SESSIONS · ${c.questions||0} QUESTIONS · ${c.probes||0} PROBES`;
-  if(!(j.sessions||[]).length){box.innerHTML='<div class="empty">No guest has talked to Salt\'s assistant yet.</div>';return;}
-  box.innerHTML=j.sessions.slice(0,40).map(s=>{const when=s.started_at?new Date(s.started_at*1000).toLocaleString():'';const turns=(s.turns||[]).map(t=>t.role==='user'?`<div class="gq ${(s.probes||[]).includes(t.text)?'probe':''}">${esc(t.text)}</div>`:`<div class="ga">${esc(String(t.text).slice(0,400))}</div>`).join('');
-    const rc=s.receipt||{},tl=Object.entries(rc.tools||{}).map(([k,v])=>`${k}${v>1?' ×'+v:''}`).join(', ');
-    const used=`<div class="gr">USED · ${tl?'tools: '+esc(tl):'no tool calls, answered from the prompt (approved facts + method list)'}${(rc.looked_up||[]).length?' · looked up: '+esc(rc.looked_up.slice(0,6).join(' | ')):''}${rc.projection?' · projection of '+esc(new Date(rc.projection*1000).toLocaleString()):''}</div>`;
-    return `<div class="gs"><div class="gm">${esc(when)} · ${esc(s.source||'api')} · ${esc(s.id)}${s.live?'':' · archived'}</div>${turns}${used}</div>`;}).join('');
-  }catch{box.innerHTML='<div class="empty">Guest conversations are visible after unlocking as Lena.</div>';}}
+async function loadGuests(){try{const r=await fetch('/api/board/guests');if(!r.ok)return;const c=(await r.json()).counts||{};
+  $('#g-count').textContent=`${c.sessions||0} SESSIONS · ${c.questions||0} QUESTIONS · ${c.probes||0} PROBES`;}catch{}}
 async function loadHealth(){try{const r=await fetch('/api/health');if(!r.ok)return;const j=await r.json();const iso=j.isolation;if(!iso)return;const m=$('#m-guest');m.textContent=(m.textContent||'')+' · '+iso.line;m.title=iso.checks.map(c=>(c.ok?'ok   ':'FAIL ')+c.text).join('\n');}catch{}}
 loadGuests();loadHealth();
 </script></body></html>

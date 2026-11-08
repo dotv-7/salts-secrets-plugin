@@ -680,6 +680,13 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
                 "isolation": perm.isolation_check(s.owner_home, s.public_home).get("line", ""),
                 "viewer": bool(s.viewer_hash), "viewer_hint": s.viewer_hint}
 
+    @app.get("/guests")
+    def guests_page(request: Request):
+        st = state(request)
+        if not (is_owner(st) or is_viewer(st)):
+            return RedirectResponse("/")
+        return render_page("guests.html", s)
+
     @app.get("/doc")
     def doc_page():
         return render_page("doc.html", s)

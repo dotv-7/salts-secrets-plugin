@@ -133,6 +133,12 @@ def test_member_codes_route_to_tier_and_blocked_cannot_chat(client, tmp_path):
     assert client.get("/api/me").json()["role"] == "blocked"  # deleting a member does not lift the block
 
 
+def test_guests_page_owner_only(client):
+    assert client.get("/guests", follow_redirects=False).status_code in (302, 307)
+    client.post("/api/unlock", json={"passphrase": PASS})
+    assert "What guests asked" in client.get("/guests").text
+
+
 def test_perm_board_owner_only(client, tmp_path):
     assert client.get("/perm", follow_redirects=False).status_code in (302, 307)
     client.post("/api/unlock", json={"passphrase": PASS})

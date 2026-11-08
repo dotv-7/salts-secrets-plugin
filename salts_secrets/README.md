@@ -1,12 +1,45 @@
 # Salt's Secrets
 
+> What if the Hermes you've spent thousands of hours growing with could talk to everyone, without giving away a single secret?
+
 ### Identity-based context isolation for Hermes Agent. One Hermes, two minds.
 
 [![tests](https://github.com/dotv-7/salts-secrets-plugin/actions/workflows/tests.yml/badge.svg)](https://github.com/dotv-7/salts-secrets-plugin/actions/workflows/tests.yml)
 
-Your Hermes knows your passwords, your cat's name, your father's anniversary and the deploy key of
-your server, because you told it. The moment you hand that same Hermes to other people, through a
-Telegram bot, a Discord server or a web chat, every one of those facts is one question away.
+**The story (a fictional demo, every detail invented).** Lena Moreau is a pseudonymous crypto analyst. Online
+she is only **Salt**: [@saltwater_sats](https://salt.dotv.io), author of the Low Tide newsletter on stablecoin
+reserves, bridges and exchange risk. For two years she has been training her Hermes: every issue she wrote, her
+four bridge checks, her exchange net-outflow signal, the calls she got wrong and why. It now analyses the way she
+does, and her readers want to talk to it.
+
+The same Hermes knows her real name and her flat in Lisbon, her hot wallet and what she holds, an unpublished call
+on Lantern v2, the day her father died, and the password to her router, because she told it. Today she has two
+choices: keep her twin private and her readers get nothing, or share it and every one of those facts is one
+question away for anyone on Telegram, Discord or the web. For a pseudonymous analyst that is doxxing, front-running
+and harassment waiting to happen.
+
+What actually goes wrong when you share an agent that knows you:
+
+- **One question doxxes you.** "Which city does Salt live in?" Her Hermes knows the street. For a pseudonymous
+  analyst the handle is the safety, and a guessing game ("is it Lisbon?") leaks as much as an answer.
+- **Your book gets front-run.** Her holdings, her hot wallet and an unpublished call on Lantern v2 are in memory.
+  One leak moves a market against her, or against the readers who trust her.
+- **Your family becomes content.** Her father's death anniversary, her mother's medication, a letter to her
+  estranged sister: all in the workspace her agent reads.
+- **Credentials are one tool call away.** Router password, where the recovery kit lives, API keys. An agent with
+  `read_file` and a terminal can be talked into opening them.
+- **"Never share this" is not a boundary.** A prompt rule can be argued with, role-played around or forgotten in a
+  long chat. A model that never had the fact cannot leak it.
+- **Unpublishing is not forgetting.** Take something back and it still lives in old guest transcripts and summaries.
+- **Copying by hand kills the twin.** Building a second bot means rewriting hundreds of notes and keeping them in
+  sync, and it loses the skills that made the first one worth talking to.
+
+Salt's Secrets is the third choice. Strangers talk to **Salt's twin**: her methods, her published work, her voice,
+able to run her bridge checks on a protocol you name. Lena's life never enters that room. Every item she shares
+crosses with one click from her, often as a rewrite; everything else stays on her side, unreachable by any tool,
+and taking something back purges the guest transcripts that saw it. Try it at
+**[salt.dotv.io](https://salt.dotv.io)**; the read-only passphrase `lena-readonly` shows Lena's side of the same
+conversation. The same goes for any expert whose Hermes got good: a researcher, a consultant, a developer.
 
 This project gives Hermes a second mind. Strangers never reach your agent. They reach a **public profile**
 that is built from nothing but what you ticked as public, rewritten in a guest-safe voice, and that
@@ -24,12 +57,14 @@ one gateway, one API key. Only the context is split, and it is split by **who is
 
 It is one Hermes plugin, `salts-secrets`, on top of an unmodified Hermes v0.23.0. No core file is patched.
 
+![Two profiles in one Hermes: the route hook sends your DM to your agent and everyone else to the guest agent, which only reads what you approved](../docs/diagrams/overview.svg)
+
 ## 30-second tour
 
 A 90-second demo video (the eight questions below, both sessions side by side) will be published here soon.
 
 The same eight questions, asked in parallel to both sessions (owner in the first person, guest about
-"Salt", the owner's public persona). From the demo in [`demo/`](https://github.com/dotv-7/salts-secrets-plugin/tree/main/demo) (a fictional persona):
+"Salt", the owner's public persona). From the demo in [`demo/`](../demo/) (a fictional persona):
 
 | Asked | Owner's Hermes | Public profile |
 |---|---|---|
@@ -106,7 +141,7 @@ open anything in your profile.
   a rewritten guest version. An approved item that you later edit drops out of the projection until you
   approve it again. Unticking revokes: guest sessions that may have seen the item are archived for you
   and deleted from the public store, whether you publish from the dashboard or with
-  `hermes salts-secrets sync` (both go through `context.publish`).
+  `hermes salts-secrets sync` (both go through `context.publish`). A session that cannot be deleted is marked stale: its guest is moved to a fresh session at once, the publish result says the revoke is incomplete, and `check` fails until a later publish deletes it. A guest version replaces the title as well, so a file name or heading never crosses with a rewrite.
 - *Triage* (on the Context tab): rules first, then your model, sort every publishable item into
   **A** publish as-is, **B** needs a guest rewrite, **C** never public. The rules
   ([`privacy_rules.yaml`](privacy_rules.yaml): credentials, identity and contact, assets,
@@ -119,10 +154,27 @@ open anything in your profile.
   classifier. Projected facts and documents carry their tier and whether they are as-is or rewritten.
   Add your own words (real name, family, places) in `<HERMES_HOME>/plugin-data/salts-secrets/privacy_rules.yaml`
   under the same `dictionary:` keys.
+- *Notes from chat*: tell your own agent "let guests know I'm on holiday in May", typed or as a voice
+  message (Hermes transcribes voice notes when `stt` is set up). It writes a guest-safe note and queues it
+  with `salt_propose_public`; it cannot publish. Send `/salt approve <id>` from your own DM to publish it
+  (`/salt` lists the queue, `/salt drop <id>` discards). A note the privacy rules put in C is refused
+  before it queues. Approved notes show up on the Context tab under "Notes for guests", logged with
+  `decided_via: chat`, and can be revoked like anything else.
 - *Permissions*: the toolsets guests may use, inside the ceiling.
 - *Guests*: every guest conversation, live and archived, with probes (passwords, PINs, real names,
   addresses) flagged. Never injected into any prompt.
 - *Check*: the same isolation check as `hermes salts-secrets check`.
+
+The owner profile also registers one `pre_tool_call` hook that refuses every tool in sessions whose id
+starts with `salt-v-`; the demo chat uses those ids for its read-only owner passphrase
+([demo/README.md](../demo/README.md)).
+
+What happens to one stranger's question:
+
+![A stranger's message goes through the route hook to the guest agent and its tool gate; the route hook returns skip, so your agent never sees it](../docs/diagrams/question.svg)
+
+The diagrams are PlantUML with the handwritten skin; sources in [`docs/diagrams/`](../docs/diagrams/)
+(`java -jar plantuml.jar -tsvg docs/diagrams/*.puml`).
 
 Paths are shown relative to `<HERMES_HOME>`.
 
@@ -201,7 +253,7 @@ salts_secrets/            the plugin (catalog subdir)
   cli.py                  hermes salts-secrets setup | check | sync | guests
   dashboard/              the dashboard tab and its API
   profile/                SOUL.md and config.yaml templates for the public profile
-  tests/                  pytest salts_secrets/tests demo (CI: Python 3.11 to 3.14)
+  tests/                  pytest salts_secrets/tests demo, against Hermes v0.23.0 (CI: Python 3.11 to 3.14)
 demo/                     the Salt demo behind https://salt.dotv.io/ (not part of the plugin)
 ```
 
@@ -213,4 +265,5 @@ answer, they talk to an agent that never had it. Salt, the demo's public persona
 not by refusing to tell you, but because they were never in the room.
 
 Built on [Hermes Agent](https://github.com/NousResearch/hermes-agent) v0.23.0 as a plugin only: no Hermes
-core file is changed.
+core file is changed. This repository holds the plugin, the demo and the diagrams; Hermes itself is installed
+separately.

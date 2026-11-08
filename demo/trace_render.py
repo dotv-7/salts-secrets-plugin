@@ -73,7 +73,7 @@ a{color:inherit;text-decoration:none}
 """
 
 TOP = """<div class="top"><div class="l"><span class="lbl">LENA MOREAU</span><span class="line"></span><span class="lbl">TRACE</span></div>
-<div class="r"><a class="lbl" href="/">CHAT</a><a class="lbl" href="/shelf">CONTEXT</a><a class="lbl" href="/perm">PERMISSIONS</a><span class="lbl" id="count">{count}</span></div></div>"""
+<div class="r"><a class="lbl" href="/">CHAT</a><a class="lbl" href="/shelf">CONTEXT</a><a class="lbl" href="/perm">PERMISSIONS</a><a class="lbl" href="/guests">GUESTS</a><span class="lbl" id="count">{count}</span></div></div>"""
 
 
 def headings(text: str) -> list[str]:
