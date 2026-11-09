@@ -46,7 +46,7 @@ select,input[type=text]{font:inherit;background:var(--surface);color:var(--text)
 select:focus,input[type=text]:focus{outline:none;border-color:var(--accent)}
 .code{color:var(--accent);background:#fff;border:1px solid var(--accent);padding:6px 10px;border-radius:0;display:inline-block;margin:6px 0;user-select:all;letter-spacing:.1em}
 .card{border:1px solid var(--hair);border-radius:0;background:var(--surface);padding:10px 12px;margin:12px 0}
-.tiers span{margin-right:14px}
+.tc{padding:0}.tc .m{margin:0}.tc td:nth-child(-n+3){white-space:nowrap}.tc #files{padding:8px 12px;border-top:1px solid var(--hair)}
 code{background:var(--sel);color:var(--accent);padding:1px 5px}
 .bar{position:sticky;top:0;height:64px;padding:0 36px;margin:0;display:flex;justify-content:space-between;align-items:center;flex-wrap:nowrap;gap:0;border-bottom:1px solid var(--hair);color:var(--accent);background:var(--bg);z-index:3}
 .bar .l,.bar .r{display:flex;align-items:center;gap:16px}.bar .r{gap:26px}.bar .line{width:40px;height:1px;background:currentColor}
@@ -54,17 +54,17 @@ code{background:var(--sel);color:var(--accent);padding:1px 5px}
 .bar a{border:0;padding:0;background:none;color:var(--accent)}.bar a:hover{background:none;text-decoration:underline;text-underline-offset:4px}
 .bar button.primary{margin-left:6px}
 @media (max-width:640px){.bar{padding:0 16px}.bar .r{gap:14px}.bar .line{display:none}}
-.robar{position:sticky;top:0;z-index:20;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:8px 14px;text-align:center}
-.ro #save,.ro details button{display:none!important}.ro input,.ro select{pointer-events:none;opacity:.6}
+body.rotop nav.salt-nav{top:33px}
+.robar{position:sticky;top:0;z-index:45;margin:0;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:14px 14px 8px;text-align:center}
+.ro #save,.ro details button{display:none!important}.ro input,.ro select{opacity:.6;cursor:not-allowed}
+.robar.flash{animation:roflash .45s 2}@keyframes roflash{50%{background:#f59e0b}}
+.rotip{position:fixed;z-index:80;pointer-events:none;background:#b45309;color:#fff;font:600 10.5px/1 var(--mono);letter-spacing:.08em;padding:7px 9px;opacity:0;transition:opacity .15s}.rotip.on{opacity:1}
+
 </style></head><body>
-<div class="bar"><div class="l"><span class="lbl">LENA MOREAU</span><span class="line"></span><span class="lbl">PERMISSIONS</span></div>
-  <div class="r"><a class="lbl" href="/">CHAT</a><a class="lbl" href="/shelf">CONTEXT</a><a class="lbl" href="/guests">GUESTS</a><a class="lbl" href="/trace">TRACE</a><a class="lbl" href="/doc">DOC</a><button id="save" class="primary" disabled>Save &amp; sync</button></div></div>
+<!--SALT-NAV--><button id="save" class="primary" disabled>Save &amp; sync</button><!--/SALT-NAV-->
 <div class="wrap">
 <p class="dim" style="margin:16px 0 0">Who can do what. Who can know what is set on the CONTEXT page.</p>
-<div class="card"><b>Two tiers today</b>　<span class="tiers">
-  <span><b class="ok">Owner</b> you, unlocked with the passphrase, every tool</span><span class="dim"><b>Admin</b> planned, not implemented</span><span class="dim"><b>User</b> planned, not implemented</span>
-  <span><b>Guest</b> everyone who does not sign in</span><span><b class="lk">Blocked</b> never reaches Hermes (device + IP)</span></span>
-  <div class="dim" id="files"></div></div>
+<div class="card tc"><table class="m" id="tiers"></table><div class="dim" id="files"></div></div>
 <details open><summary>Tool access<span class="dim">tick = allowed for that tier; red lock = never for anyone but the owner</span></summary><div style="overflow-x:auto"><table class="m" id="matrix"></table></div></details>
 <details open><summary>Access control<span class="dim">a blocked person stays blocked after clearing cookies</span></summary><div style="padding:8px 12px">
   <label><input type="checkbox" id="gaccess"> Let guests chat without signing in</label>
@@ -87,9 +87,15 @@ async function api(path,body){const r=await fetch(path,body?{method:'POST',heade
 async function load(j){S=j||await api('/api/perm');policy={};for(const t of CFG)policy[t]=new Set(S.policy[t]);initial=snap();draw();}
 const snap=()=>CFG.map(t=>[...policy[t]].sort().join()).join('|');
 function draw(){
-  $('#files').innerHTML='Policy file: <b>'+esc(S.policy_file)+'</b><br>'+CFG.map(t=>{const p=S.profiles[t];
-    const a=(S.audit||{})[t]||[];const iso=!p.deployed?'':a.length?`<div class="lk">⚠ Isolation check failed:<br>${a.map(esc).join('<br>')}<br>Save &amp; sync fixes the config; context files must be moved by hand</div>`:'<span class="ok">isolation check passed</span>';
-    return `${esc(S.labels[t])} → profile <b>${esc(p.name)}</b> <span class="${p.deployed?'ok':'lk'}">${p.deployed?'deployed':'not deployed'}</span> <span class="dim">${esc(p.home)}</span> ${iso}`}).join('<br>');
+  const row=(tier,who,prof,state,home)=>`<tr><td>${tier}</td><td>${who}</td><td>${prof}</td><td>${state}</td><td class="dim">${home}</td></tr>`;
+  $('#tiers').innerHTML='<tr><th>Tier</th><th>Who</th><th>Profile</th><th>Status</th><th>Home</th></tr>'
+    +row('<b class="ok">Owner</b>','you · every tool','<b>this profile</b>','<span class="ok">active</span>','—')
+    +CFG.map(t=>{const p=S.profiles[t],a=(S.audit||{})[t]||[];
+      const who=t==='guest'?'everyone who does not sign in':planned(t)?'planned, not implemented':'signed-in members';
+      const st=!p.deployed?'<span class="lk">not deployed</span>':a.length?`<span class="lk">⚠ isolation check failed: ${a.map(esc).join('; ')}</span>`:'<span class="ok">deployed · isolation check passed</span>';
+      return row(`<b${planned(t)?' class="no"':''}>${esc(S.labels[t])}</b>`,who,`<b>${esc(p.name)}</b>`,st,esc(p.home));}).join('')
+    +row('<b class="lk">Blocked</b>','never reaches Hermes (device + IP)','—','—','—');
+  $('#files').innerHTML='Policy file: <b>'+esc(S.policy_file)+'</b>';
   $('#gaccess').checked=!!S.guest_access;
   $('#blocks').innerHTML=(S.blocklist||[]).length?'<tr><th>Kind</th><th>Value</th><th>Member</th><th>Until</th><th></th></tr>'+S.blocklist.map(b=>
     `<tr><td>${b.kind==='ip'?'IP':'device'}</td><td class="dim">${esc(b.value)}</td><td>${esc(b.name)}</td><td class="dim">${new Date(b.until*1000).toLocaleDateString()}</td>
@@ -122,5 +128,12 @@ $('#madd').onclick=async()=>{const j=await api('/api/perm/members',{action:'add'
 $('#save').onclick=async()=>{const j=await api('/api/perm/save',{tiers:Object.fromEntries(CFG.map(t=>[t,[...policy[t]]]))});
   toast('Synced to: '+Object.keys(j.synced).map(t=>j.labels[t]).join(', ')+'. New sessions use it.');load(j);};
 load();
-fetch('/api/me').then(r=>r.json()).then(j=>{if(!j.readonly)return;document.body.classList.add('ro');const n=document.createElement('div');n.className='robar';n.textContent='READ ONLY · you see what Lena sees; saving, drafting and publishing are off';document.body.prepend(n);}).catch(()=>{});
+const RO_CTRL='input,select';
+// Read-only: a click on a control flashes the bar and says why nothing happens.
+function roHint(e){if(!document.body.classList.contains('ro')||!e.target.closest||!e.target.closest(RO_CTRL))return;e.preventDefault();
+  const b=document.querySelector('.robar');if(b){b.classList.remove('flash');void b.offsetWidth;b.classList.add('flash');}
+  let n=document.querySelector('.rotip');if(!n){n=document.createElement('div');n.className='rotip';n.textContent='READ ONLY · you can look, not change';document.body.append(n);}
+  n.style.left=Math.min(e.clientX+12,innerWidth-300)+'px';n.style.top=(e.clientY+14)+'px';n.classList.add('on');clearTimeout(roHint.t);roHint.t=setTimeout(()=>n.classList.remove('on'),1600);}
+addEventListener('mousedown',roHint,true);addEventListener('click',roHint,true);
+fetch('/api/me').then(r=>r.json()).then(j=>{if(!j.readonly)return;document.body.classList.add('ro');const n=document.createElement('div');n.className='robar';n.textContent='READ ONLY · you see what Lena sees; saving, drafting and publishing are off';document.body.prepend(n);document.body.classList.add('rotop');}).catch(()=>{});
 </script></body></html>

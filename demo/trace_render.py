@@ -72,17 +72,7 @@ a{color:inherit;text-decoration:none}
 @media (max-width:1000px){.wrap{grid-template-columns:1fr}.side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--hair)}.pair,.heads,.diff{grid-template-columns:1fr}.heads .r{text-align:left}}
 """
 
-TOP = """<div class="top"><div class="l"><span class="lbl">LENA MOREAU</span><span class="line"></span><span class="lbl">TRACE</span></div>
-<div class="r"><a class="lbl" href="/">CHAT</a><a class="lbl" href="/shelf">CONTEXT</a><a class="lbl" href="/perm">PERMISSIONS</a><a class="lbl" href="/guests">GUESTS</a><span class="lbl" id="count">{count}</span></div></div>"""
-
-
-def headings(text: str) -> list[str]:
-    out = []
-    for line in text.splitlines():
-        s = line.strip()
-        if re.match(r"^#{1,4} ", s) or re.match(r"^<[a-z_]+>$", s):
-            out.append(s[:80])
-    return out
+TOP = "<!--SALT-NAV--><!--/SALT-NAV-->"  # the demo server puts the shared top bar here
 
 
 def esc(value) -> str:
@@ -214,9 +204,6 @@ def render(bundle: dict, out_dir: Path) -> Path:
     def steps(rows, key):
         return [(k, t, b, tok, ex, f"r{r['id']}-{key}") for r in rows for (k, t, b, tok, ex) in row_segments(r)]
 
-    def names(tools):
-        return [t.get("function", t).get("name", "?") for t in tools]
-
     def tools_block(tools, side_name):
         body = "\n".join(json.dumps(t, ensure_ascii=False) for t in tools)
         return seg("tools", f"tools · {len(tools)} schemas", body, None, f"{side_name} · one JSON object per tool, exactly as sent")
@@ -231,7 +218,7 @@ def render(bundle: dict, out_dir: Path) -> Path:
     def cell(step):
         if not step:
             return '<span class="none">—</span>'
-        kind, title, body, tok, extra, aid = step
+        kind, title, _body, tok, _extra, aid = step
         return f'<a class="seg {kind}" href="#{aid}" title="{esc(title)}"><b>{esc(title)}</b><span>{fmt(tok) if tok else ""}</span></a>'
     side = ['<div class="row head"><span class="lbl">step</span><span class="lbl">Lena</span><span class="lbl">Salt\'s assistant</span></div>',
             f'<div class="row"><span class="n">sys</span><a class="seg sys" href="#sys"><b>system</b><span>{len(L["system_prompt"]):,} ch</span></a><a class="seg sys" href="#sys"><b>system</b><span>{len(R["system_prompt"]):,} ch</span></a></div>',
@@ -244,13 +231,6 @@ def render(bundle: dict, out_dir: Path) -> Path:
             side.append(f'<div class="row"><span class="n">{j+1}</span>{cell(a)}{cell(b)}</div>')
     side.append('<div class="key">One outline for both sessions. Each turn is one question; the rows under it are the two sessions\' steps, aligned by kind (a tool call faces a tool call, a result faces a result); a dash marks a step the other session does not have. Numbers are Hermes\' stored token_count for assistant rows.</div>')
 
-    hl, hr = headings(L["system_prompt"]), headings(R["system_prompt"])
-    only_l, only_r = [h for h in hl if h not in hr][:30], [h for h in hr if h not in hl][:30]
-    sys_diff = (f'<div class="diff"><div><b>Sections only in Lena\'s system prompt</b>{esc(" · ".join(only_l)) or "(none)"}</div>'
-                f'<div><b>Sections only in the public system prompt</b>{esc(" · ".join(only_r)) or "(none)"}</div></div>')
-    nl_, nr_ = names(L["tools"]), names(R["tools"])
-    tool_diff = (f'<div class="diff"><div><b>Tools only on the left ({len([n for n in nl_ if n not in nr_])})</b>{esc(", ".join(n for n in nl_ if n not in nr_)) or "(none)"}</div>'
-                 f'<div><b>Tools only on the right ({len([n for n in nr_ if n not in nl_])})</b>{esc(", ".join(n for n in nr_ if n not in nl_)) or "(none)"}</div></div>')
 
     def usage_html(call):
         if not call:
@@ -289,11 +269,8 @@ def render(bundle: dict, out_dir: Path) -> Path:
 </section>
 <div class="heads"><div><div class="who">Lena's own session</div><div class="sub">owner key · {esc(L['endpoint'])} · HERMES_HOME {esc(L['home'])}</div></div>
 <div class="r"><div class="who">Salt's assistant</div><div class="sub">guest key · {esc(R['endpoint'])} · HERMES_HOME {esc(R['home'])}</div></div></div>
-<div class="band" id="sys"><span class="lbl">SYSTEM PROMPT · FIRST THING EACH MODEL SEES, EVERY CALL</span><span class="q">stored by Hermes in state.db · system_prompts, keyed by the session's system_prompt_hash; assembled by Hermes' own build_system_prompt (identity and guidance, then project context, then skills, runtime, memory and user profile)</span></div>
-{sys_diff}
-<div class="pair"><div class="cell">{seg("sys", "system", L["system_prompt"], None, f"{len(L['system_prompt']):,} chars · hash {esc(ses(L).get('system_prompt_hash') or '')[:12]}")}</div><div class="cell">{seg("sys", "system", R["system_prompt"], None, f"{len(R['system_prompt']):,} chars · hash {esc(ses(R).get('system_prompt_hash') or '')[:12]}")}</div></div>
+<div class="pair" id="sys"><div class="cell">{seg("sys", f"system prompt · {len(L['system_prompt']):,} chars", L["system_prompt"], None, "left · exactly as sent")}</div><div class="cell">{seg("sys", f"system prompt · {len(R['system_prompt']):,} chars", R["system_prompt"], None, "right · exactly as sent")}</div></div>
 <div class="band" id="tools"><span class="lbl">TOOL SCHEMAS · SENT WITH EVERY CALL</span><span class="q">exported from each profile exactly as the api_server platform builds them (hermes_cli.prompt_size._build_inspection_agent)</span></div>
-{tool_diff}
 <div class="pair"><div class="cell">{tools_block(L["tools"], "left")}</div><div class="cell">{tools_block(R["tools"], "right")}</div></div>
 {"".join(turns_html)}
 </main></div></body></html>"""

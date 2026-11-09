@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Guide · salts-secrets</title>
+<style>
+:root{--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,"PingFang SC",monospace;--disp:"Antonio",Impact,"PingFang SC",sans-serif;--bg:#f2f2f2;--text:#000091;--dim:#6b6bd6;--accent:#0000f2;--hair:rgba(0,0,242,.15)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:13.5px/1.7 var(--mono)}
+body::before{content:"";position:fixed;inset:0;border:6px solid var(--frame,#7f7fff);pointer-events:none;z-index:50}
+.wrap{max-width:920px;margin:0 auto;padding:0 24px 80px}
+a{color:var(--accent)}
+h2{font:400 20px/1.2 var(--disp);text-transform:uppercase;color:var(--accent);margin:34px 0 8px;letter-spacing:.03em}
+.dim{color:var(--dim)}code{background:#fff;border:1px solid var(--hair);padding:0 5px}
+pre{position:relative;background:#fff;border:1px solid var(--hair);padding:12px 14px;overflow-x:auto;font-size:12.5px;line-height:1.55;white-space:pre}
+pre button{position:absolute;top:6px;right:6px;font:600 10px var(--mono);letter-spacing:.08em;color:var(--accent);background:#fff;border:1px solid var(--accent);cursor:pointer;padding:2px 8px}
+.hook{margin:18px 0 10px;padding-left:14px;border-left:3px solid var(--accent);font-style:italic;font-size:17px;color:var(--accent)}
+table{border-collapse:collapse;width:100%;font-size:12.5px}td,th{border-bottom:1px solid var(--hair);padding:5px 8px;text-align:left;vertical-align:top}th{color:var(--dim);font-weight:500}
+ol,ul{padding-left:22px}li{margin:3px 0}
+</style></head><body><!--SALT-NAV--><!--/SALT-NAV--><div class="wrap">
+<blockquote class="hook">What if the Hermes you&#39;ve spent thousands of hours growing with could talk to everyone, without giving away a single secret?</blockquote>
+<p>This plugin splits one Hermes by <b>who is asking</b>. Your own messages reach your profile, with all its memory, files and tools. Everyone else reaches a separate <b>public profile</b> that holds only what you approved on the Context tab, and has no tool that can open your files, sessions or memory. One gateway, one install; guests are not refused your secrets, they talk to an agent that never had them.</p>
+
+<h2>1 · Two sessions</h2>
+<table><tr><th></th><th>Your session</th><th>The session guests reach</th></tr>
+<tr><td>SOUL.md</td><td>yours</td><td>its own, written for strangers</td></tr>
+<tr><td>MEMORY.md / USER.md</td><td>injected every turn</td><td>switched off; only ticked lines arrive, as facts</td></tr>
+<tr><td>Workspace, skills, private files</td><td>readable</td><td>no file tools, no path leads there</td></tr>
+<tr><td>Sessions</td><td>everything you said</td><td>its own state.db, guest conversations only</td></tr>
+<tr><td>Tools</td><td>every toolset</td><td>only what Permissions allows</td></tr>
+<tr><td>External memory provider</td><td>whatever you configured</td><td>none</td></tr></table>
+
+<h2>2 · Set up</h2>
+<p><code>--owner</code> is your own identity on each platform; the plugin never guesses it. Use a handle for <code>--owner-name</code>, not your real name: it is how the public profile refers to you.</p>
+<pre data-k="setup"></pre>
+<p><code>setup</code> creates the public profile, installs this plugin there, writes the sender routes (your id to your profile, everyone else to the public one) and runs the check; if anything is missing, such as <code>plugins.isolation: in_process</code>, the failing line says how to fix it. It copies no model settings or keys; pick the model guests are answered with by running <code>hermes -p public model</code>. It is safe to run again.</p>
+
+<h2>3 · Context: decide what guests may know</h2>
+<ol>
+<li>Every source your agent reads is listed in its own block: SOUL, MEMORY, USER, skills, workspace files, notes. Open one to see its entries; the left column is the raw original, the right column is what guests would get.</li>
+<li>Opening the tab applies privacy rules only; nothing is sent to your model. <b>Classify</b> sorts the entries into <b>A</b> (publish as-is), <b>B</b> (needs a rewrite) and <b>C</b> (never public) with your own model.</li>
+<li>Tick an entry to publish it. For B, <b>Draft with Hermes</b> writes the guest version with your profile's model; edit it freely, or tick <b>AS-IS</b> to send the original. Text marked "do not publish" never crosses.</li>
+<li><b>Save &amp; sync</b> writes the public projection. Unticking something and syncing again removes it and deletes every guest session, so it does not live on in old transcripts.</li>
+</ol>
+<p class="dim">Every decision is logged in <code>plugin-data/salts-secrets/approvals.jsonl</code>. Add your own sensitive words (real name, family, places) to <code>plugin-data/salts-secrets/privacy_rules.yaml</code>.</p>
+
+<h2>4 · Permissions, Guests</h2>
+<p><b>Permissions</b> sets the toolsets guests may use and turns guest access on or off. <b>Guests</b> lists every guest conversation, one row per session; open one to read it. Questions that probe for passwords, PINs, real names or addresses are flagged. Guest conversations are never injected into any prompt.</p>
+
+<h2>5 · From chat</h2>
+<p>Tell your own agent "let guests know I'm on holiday in May". It writes a guest-safe note and queues it; it cannot publish by itself. From your own DM, <code>/salt</code> lists the queue, <code>/salt approve &lt;id&gt;</code> publishes, <code>/salt drop &lt;id&gt;</code> discards.</p>
+
+<h2>6 · Commands</h2>
+<table><tr><th>Command</th><th>What it does</th></tr>
+<tr><td><code>hermes salts-secrets setup</code></td><td>create or repair the public profile and the routes</td></tr>
+<tr><td><code>hermes salts-secrets check</code></td><td>verify every isolation condition; each failing line prints its fix</td></tr>
+<tr><td><code>hermes salts-secrets sync</code></td><td>publish what is approved, same as Save &amp; sync</td></tr>
+<tr><td><code>hermes salts-secrets guests</code></td><td>summarise guest conversations</td></tr></table>
+
+<h2>7 · Limits</h2>
+<ul>
+<li>Native sender routes cover Telegram and Discord; other platforms go through a text-only second line.</li>
+<li>In group chats you count as a guest: only your own DM reaches your profile.</li>
+<li>One public profile serves all guests. They are isolated from you and from each other's history, but share one persona.</li>
+<li>Isolation comes from profiles, configuration and plugins in one process, not a kernel boundary. Configuration can drift; that is what <code>check</code> is for.</li>
+<li>Text already sent to your model provider or streamed to a chat cannot be recalled by a revoke.</li>
+</ul>
+<p class="dim">Source, docs and issues: <a href="https://github.com/dotv-7/salts-secrets" target="_blank" rel="noopener">github.com/dotv-7/salts-secrets</a>. A live demo with a fictional owner, no install needed: <a href="https://salt.dotv.io" target="_blank" rel="noopener">salt.dotv.io</a>.</p>
+</div><script>
+const $=s=>document.querySelector(s);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const T={setup:`hermes plugins install salts-secrets
+hermes salts-secrets setup --owner telegram:<your user id> --owner-name "<your handle>"
+hermes gateway restart
+hermes salts-secrets check`};
+document.querySelectorAll('pre[data-k]').forEach(e=>{e.textContent=T[e.dataset.k];const b=document.createElement('button');b.textContent='COPY';
+  b.onclick=()=>navigator.clipboard.writeText(T[e.dataset.k]).then(()=>{b.textContent='COPIED';setTimeout(()=>b.textContent='COPY',1200);});e.appendChild(b);});
+</script></body></html>

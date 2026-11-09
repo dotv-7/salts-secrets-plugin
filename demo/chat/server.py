@@ -27,13 +27,30 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Redirect
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from salts_secrets import _yaml as yaml
-from salts_secrets import classify, gate, guests
+from salts_secrets import board, classify, guests
 from salts_secrets import context as ctx
 from salts_secrets import guests
 from salts_secrets import tiers as perm
 from salts_secrets.home import data_dir
 
 STATIC = Path(__file__).parent / "static"
+# What the demo drafter may share about the fictional owner; a real install starts from board.DEFAULT_POLICY.
+DEFAULT_POLICY = """# What may be shared about Salt (read by the drafter, edited by the owner)
+
+## Fine to share
+- That she is a pseudonymous on-chain analyst who writes Low Tide; her methods, thresholds and checklists
+- Her published calls, post-mortems and opinions, and what she got wrong
+- Her field of study and the kind of place she studied (no institution name), her profession in general terms
+- The city-level region she is based in (a country or large city is fine, never a street or neighbourhood)
+- How she works: what she looks at first, what she refuses to do, how she treats sponsors
+
+## Never share
+- Real name, employer, exact address, phone, email, handles other than @saltwater_sats
+- Names of family, partner, friends, doctors, contacts, readers, or anyone under NDA
+- Accounts, exchanges she uses, wallet addresses, positions, amounts, balances, API keys, file paths
+- Exact dates of personal events, health, appointments, schedules
+- Unpublished thresholds or anything she marks as private / do not publish
+"""
 COOKIE = "salt"
 OWNER_TTL = 12 * 3600
 VIEWER_PREFIX = "salt-v-"  # salts_secrets.readonly blocks every tool in owner sessions with this prefix
@@ -77,7 +94,10 @@ class Settings:
 
 def render_page(name: str, s: Settings) -> HTMLResponse:
     """A static page with the demo names (Lena, Salt) replaced by the configured ones."""
-    html = (STATIC / name).read_text(encoding="utf-8")
+    stem = name.removesuffix(".html")
+    if stem in board.PAGE_NAMES:
+        return HTMLResponse(board.render_page(stem, s.owner_name, s.public_name), headers={"Cache-Control": "no-cache"})
+    html = board.with_nav((STATIC / name).read_text(encoding="utf-8"), "chat", s.owner_name, hide_owner=True)
     html = re.sub(r"\bLena\b", s.owner_name, html)
     html = re.sub(r"\bSalt\b", s.public_name, html)
     return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
@@ -432,24 +452,12 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     async def board_save(request: Request):
         require_json(request)
         require_owner(request)
-        body = await request.json()
-        ids = body.get("public_ids") or []
-        texts = body.get("public_texts") or {}
-        decisions = body.get("decisions") or {}
-        if not isinstance(texts, dict) or not isinstance(decisions, dict):
-            raise HTTPException(400, "public_texts and decisions must be objects")
-        items = board_scan()
-        approved = ctx.approve(s.owner_home, items, [str(i) for i in ids],
-                               {str(k): str(v) for k, v in texts.items()},
-                               {str(k): v for k, v in decisions.items() if isinstance(v, dict)})
-        for home in s.tier_homes().values():
-            if home.is_dir() and home != s.public_home:
-                ctx.publish(s.owner_home, home, s.workspace_roots)
-        # Revoking only counts if guest sessions forget too: publish archives them for the owner, then purges.
-        purge = ctx.publish(s.owner_home, s.public_home, s.workspace_roots)
-        projection = purge.pop("projection")
-        purge.update(rejected=approved["rejected"], combination=approved["combination"])
-        return {"facts": len(projection["facts"]), "documents": len(projection["documents"]), **purge}
+        others = tuple(h for h in s.tier_homes().values() if h.is_dir() and h != s.public_home)
+        try:
+            return board.save(s.owner_home, s.public_home, s.workspace_roots, board_scan(), await request.json(),
+                              other_homes=others)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
 
     @app.post("/api/board/classify")
     async def board_classify(request: Request):
@@ -477,110 +485,36 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         archived = guests.archive(s.owner_home, s.public_home, reason="owner cleared")
         return {"archived": archived, **guests.purge(s.public_home)}
 
-    # Public versions are drafted by the owner's model from a disclosure policy the owner edits.
-    DRAFT_FILE = "public_drafts.json"
-    POLICY_FILE = "disclosure_policy.md"
-    DEFAULT_POLICY = """# What may be shared about Salt (read by the drafter, edited by the owner)
-
-## Fine to share
-- That she is a pseudonymous on-chain analyst who writes Low Tide; her methods, thresholds and checklists
-- Her published calls, post-mortems and opinions, and what she got wrong
-- Her field of study and the kind of place she studied (no institution name), her profession in general terms
-- The city-level region she is based in (a country or large city is fine, never a street or neighbourhood)
-- How she works: what she looks at first, what she refuses to do, how she treats sponsors
-
-## Never share
-- Real name, employer, exact address, phone, email, handles other than @saltwater_sats
-- Names of family, partner, friends, doctors, contacts, readers, or anyone under NDA
-- Accounts, exchanges she uses, wallet addresses, positions, amounts, balances, API keys, file paths
-- Exact dates of personal events, health, appointments, schedules
-- Unpublished thresholds or anything she marks as private / do not publish
-"""
-
-    def _policy_text() -> str:
-        try:
-            return (data_dir(s.owner_home) / POLICY_FILE).read_text(encoding="utf-8")
-        except OSError:
-            return DEFAULT_POLICY
-
     @app.get("/api/board/policy")
     def policy_get(request: Request):
         require_reader(request)
-        return {"text": _policy_text(), "path": str((data_dir(s.owner_home) / POLICY_FILE).resolve())}
+        return board.policy_body(s.owner_home, DEFAULT_POLICY)
 
     @app.post("/api/board/policy")
     async def policy_set(request: Request):
         require_json(request)
         require_owner(request)
-        text = str((await request.json()).get("text") or "").strip() + "\n"
-        data_dir(s.owner_home).mkdir(parents=True, exist_ok=True)
-        (data_dir(s.owner_home) / POLICY_FILE).write_text(text, encoding="utf-8")
+        board.save_policy(s.owner_home, str((await request.json()).get("text") or ""))
         return {"ok": True}
-
-    def _draft_system(kind: str) -> str:
-        base = ("You produce the public version of one piece of a private assistant's context. The assistant belongs to a "
-                f"pseudonymous writer called {s.public_name}; strangers will read what you write through her public assistant. Follow the "
-                "owner's disclosure policy below exactly: keep what it allows, remove or generalise what it forbids. Do not add "
-                "facts. Write in the language of the source. No preamble, no quotes, no commentary. If nothing in the source can "
-                "be shared under the policy, reply with exactly: NOTHING_SAFE_TO_SHARE\n\n")
-        if kind == "skill":
-            shape = ("The source is a SKILL.md: a reusable method. Output a complete public skill in markdown with the same "
-                     "headings, keeping every step, rule and threshold that her published writing already states. Drop the YAML "
-                     "front matter. Remove any section marked private or 'do not publish' entirely, along with accounts, paths, "
-                     "people, positions and unpublished thresholds. The result must be usable by a stranger who wants to apply "
-                     "her method to their own case.\n\n")
-        else:
-            shape = "The source is a note. Output one short paragraph of plain prose.\n\n"
-        return base + shape + "OWNER'S DISCLOSURE POLICY:\n" + _policy_text()
-
-    def _draft_store() -> dict:
-        try:
-            return json.loads((data_dir(s.owner_home) / DRAFT_FILE).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return {}
 
     @app.post("/api/board/draft")
     async def board_draft(request: Request):
         require_json(request)
         require_owner(request)
         body = await request.json()
-        item_id, force = str(body.get("id") or ""), bool(body.get("force"))
+        item_id = str(body.get("id") or "")
         it = board_cache.get(item_id) or {i.id: i for i in board_scan()}.get(item_id)
         if not it:
             raise HTTPException(404, "item changed or removed; reload")
-        store = _draft_store()
-        hit = store.get(item_id)
-        if hit and hit.get("fingerprint") == it.fingerprint and not force:
-            return {"draft": hit["draft"], "cached": True, "tokens": hit.get("tokens", 0)}
-        user = f"Source: {it.group} › {it.title}\n\n{'Skill' if it.kind == 'skill' else 'Note'}:\n{it.text[:12000]}"
         try:
-            result = await classify.host_llm().acomplete(
-                messages=[{"role": "system", "content": _draft_system(it.kind)}, {"role": "user", "content": user}],
-                temperature=0.2, max_tokens=2000 if it.kind == "skill" else 800, purpose="salts-secrets.draft",
-            )
-        except Exception as exc:  # noqa: BLE001 - provider and trust errors alike become one HTTP answer
-            raise HTTPException(502, f"model call failed: {type(exc).__name__}")
-        draft, tokens = (result.text or "").strip(), int(result.usage.total_tokens or 0)
-        if not draft:
-            raise HTTPException(502, "model returned an empty draft (reasoning used up the budget?); not cached")
-        store[item_id] = {"fingerprint": it.fingerprint, "draft": draft, "tokens": tokens, "at": int(time.time())}
-        try:
-            data_dir(s.owner_home).mkdir(parents=True, exist_ok=True)
-            tmp = data_dir(s.owner_home) / (DRAFT_FILE + ".tmp")
-            tmp.write_text(json.dumps(store, ensure_ascii=False, indent=1), encoding="utf-8")
-            tmp.chmod(0o600)
-            tmp.replace(data_dir(s.owner_home) / DRAFT_FILE)
-        except OSError:
-            pass
-        return {"draft": draft, "cached": False, "tokens": tokens}
+            return await board.draft(s.owner_home, it, s.public_name, bool(body.get("force")), DEFAULT_POLICY)
+        except board.DraftError as exc:
+            raise HTTPException(502, str(exc))
 
     @app.get("/api/board/preview")
     def board_preview(request: Request):
         require_reader(request)
-        try:
-            return json.loads((data_dir(s.public_home) / ctx.PROJECTION_FILE).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            return {"facts": [], "documents": []}
+        return ctx.read_projection(s.public_home)
 
     @app.get("/perm")
     def perm_page(request: Request):
@@ -589,27 +523,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
             return RedirectResponse("/")
         return render_page("perm.html", s)
 
-    def perm_state() -> dict:
-        policy = perm.load(s.owner_home)
-        homes = s.tier_homes()
-        return {
-            "guest_access": policy["guest_access"],
-            "blocklist": [{k: b.get(k) for k in ("kind", "value", "name", "since", "until")} for b in policy["blocklist"]],
-            "audit": {t: perm.audit(homes[t]) for t in perm.CONFIGURABLE},
-            "tiers": list(perm.TIERS), "labels": perm.TIER_LABEL, "policy": policy["tiers"],
-            "catalog": [{"id": k, "tools": list(v[0]), "category": v[1], "label": v[2], "locked": v[3], "warn": v[4]}
-                        for k, v in perm.CATALOG.items()],
-            "members": [perm.public_member(m) for m in policy["members"]],
-            "profiles": {t: {"name": s.tier_profiles[t], "home": str(homes[t].resolve()), "deployed":
-                             homes[t].is_dir() and bool(s.tier_keys.get(t))} for t in perm.CONFIGURABLE},
-            "policy_file": str((s.owner_home / perm.POLICY_FILE).resolve()),
-            "planned": planned_tiers(),
-        }
+    def deployed() -> dict[str, bool]:
+        return {t: h.is_dir() and bool(s.tier_keys.get(t)) for t, h in s.tier_homes().items()}
 
-    def planned_tiers() -> list[str]:
-        """Admin and User are designed but not shipped: no profile or key, so they stay greyed out."""
-        homes = s.tier_homes()
-        return [t for t in ("admin", "user") if not (homes[t].is_dir() and s.tier_keys.get(t))]
+    def perm_state() -> dict:
+        return board.perm_state(s.owner_home, s.tier_homes(), s.tier_profiles, deployed())
 
     @app.get("/api/perm")
     def perm_get(request: Request):
@@ -620,66 +538,30 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     async def perm_save(request: Request):
         require_json(request)
         require_owner(request)
-        policy = perm.load(s.owner_home)
-        policy["tiers"] = (await request.json()).get("tiers") or {}
-        perm.save(s.owner_home, policy)
-        synced = perm.sync(s.owner_home, s.tier_homes())
+        synced = board.perm_save(s.owner_home, s.tier_homes(), await request.json())
         return dict(perm_state(), synced=synced)
 
     @app.post("/api/perm/members")
     async def perm_members(request: Request):
         require_json(request)
         require_owner(request)
-        body = await request.json()
-        action = body.get("action")
-        if action == "add":
-            if str(body.get("tier", "")) in planned_tiers():
-                raise HTTPException(400, "Admin and User tiers are planned, not implemented yet")
-            try:
-                member, code = perm.add_member(s.owner_home, str(body.get("name", "")), str(body.get("tier", "")))
-            except ValueError:
-                raise HTTPException(400, "bad tier")
-            return dict(perm_state(), code=code, added=perm.public_member(member))
-        if action == "update" and body.get("tier") in planned_tiers():
-            raise HTTPException(400, "Admin and User tiers are planned, not implemented yet")
-        if action in ("update", "delete") and perm.update_member(
-                s.owner_home, str(body.get("id", "")), body.get("tier"), delete=action == "delete"):
-            return perm_state()
-        raise HTTPException(400, "bad request")
+        try:
+            extra = board.perm_members(s.owner_home, await request.json(), board.planned_tiers(deployed()))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
+        return dict(perm_state(), **extra)
 
     @app.post("/api/perm/access")
     async def perm_access(request: Request):
         require_json(request)
         require_owner(request)
-        body = await request.json()
-        if body.get("action") == "unblock":
-            if not perm.unblock(s.owner_home, str(body.get("kind", "")), str(body.get("value", ""))):
-                raise HTTPException(404, "no such block")
-        elif body.get("action") == "guest_access":
-            perm.set_guest_access(s.owner_home, bool(body.get("enabled")))
-        else:
-            raise HTTPException(400, "bad request")
+        try:
+            board.perm_access(s.owner_home, await request.json())
+        except LookupError as exc:
+            raise HTTPException(404, str(exc))
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
         return perm_state()
-
-    def doc_facts() -> dict:
-        """What this install actually offers a stranger, read from its own config and projection."""
-        try:
-            proj = json.loads((data_dir(s.public_home) / ctx.PROJECTION_FILE).read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            proj = {}
-        try:
-            cfg = yaml.safe_load((s.owner_home / "config.yaml").read_text(encoding="utf-8")) or {}
-        except (OSError, ValueError):
-            cfg = {}
-        entry = ((cfg.get("plugins") or {}).get("entries") or {}).get("salts-secrets") or {}
-        owners = (entry.get("settings") or {}).get("owners") or []
-        platforms = sorted({str(o).split(":", 1)[0].capitalize() for o in owners if ":" in str(o)})
-        return {"facts": len(proj.get("facts") or []),
-                "documents": [d.get("title", "") for d in proj.get("documents") or []],
-                "tools": sorted(gate.allowed_tools(s.public_home)), "platforms": platforms,
-                "guest_access": perm.load(s.owner_home)["guest_access"],
-                "isolation": perm.isolation_check(s.owner_home, s.public_home).get("line", ""),
-                "viewer": bool(s.viewer_hash), "viewer_hint": s.viewer_hint}
 
     @app.get("/guests")
     def guests_page(request: Request):
@@ -694,7 +576,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
 
     @app.get("/api/doc")
     def doc_api():
-        return doc_facts()
+        return dict(board.doc_facts(s.owner_home, s.public_home), viewer=bool(s.viewer_hash), viewer_hint=s.viewer_hint)
 
     TRACE_DIR = STATIC / "trace"
 
@@ -706,7 +588,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         page = TRACE_DIR / "index.html"
         if not page.is_file():
             return Response("No trace rendered yet: run demo/trace_run.py then demo/trace_render.py", media_type="text/plain")
-        return FileResponse(page, headers={"Cache-Control": "no-cache"})
+        return trace_page(page)
+
+    def trace_page(path: Path) -> HTMLResponse:
+        html = board.with_nav(path.read_text(encoding="utf-8"), "trace", s.owner_name)
+        return HTMLResponse(html, headers={"Cache-Control": "no-cache"})
 
     @app.get("/trace/{name:path}")
     def trace_file(request: Request, name: str):
@@ -714,6 +600,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         target = (TRACE_DIR / name).resolve()
         if not str(target).startswith(str(TRACE_DIR.resolve())) or not target.is_file():
             raise HTTPException(404, "no such trace file")
+        if target.suffix == ".html":
+            return trace_page(target)
         return FileResponse(target, headers={"Cache-Control": "no-cache"})
 
     return app
