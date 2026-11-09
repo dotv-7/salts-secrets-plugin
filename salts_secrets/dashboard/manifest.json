@@ -1,9 +1,9 @@
 {
   "name": "salts-secrets",
   "label": "Salt's Secrets",
-  "description": "Decide what strangers may know, which tools they get, and check that the guest side is isolated",
+  "description": "Decide what strangers may know and which tools they get, and read what guests asked",
   "icon": "Shield",
-  "version": "0.3.0",
+  "version": "0.6.0",
   "tab": {
     "path": "/salts-secrets",
     "position": "after:skills"

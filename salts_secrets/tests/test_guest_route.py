@@ -56,6 +56,14 @@ def test_owner_in_group_is_a_guest():
     assert calls == [("guest-telegram-group--100", "[owner] it is me, what is my plan")]
 
 
+@pytest.mark.parametrize("platform, user_id", [("webhook", "webhook:github"), ("msgraph", "msgraph")])
+def test_webhook_delivery_reaches_owner_agent(platform, user_id):
+    """A signed delivery to the owner's own webhook route is the owner's automation, not a guest."""
+    hook, calls = make()
+    assert run(hook, src(f"{platform}:d1", "webhook", user_id, platform=platform), "push event") is None
+    assert calls == []
+
+
 def test_admitted_bot_is_consumed_silently():
     hook, calls = make()
     assert run(hook, {**src("-100", "group", "42"), "is_bot": True}) == {"action": "handled", "reply": None}

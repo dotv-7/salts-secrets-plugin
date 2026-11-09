@@ -1,34 +1,3 @@
-.ss-page { max-width: 960px; padding: 1.5rem; font-size: 14px; }
-.ss-page h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
-.ss-page h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; margin: 1.25rem 0 0.5rem; }
-.ss-muted { opacity: 0.65; }
-.ss-lead { margin: 1rem 0; }
-.ss-error { color: #e5484d; }
-.ss-ok { color: #30a46c; }
-.ss-headline { font-family: ui-monospace, monospace; font-weight: 600; }
-.ss-tabs { display: flex; gap: 0.25rem; margin-top: 1rem; border-bottom: 1px solid rgba(127, 127, 127, 0.25); }
-.ss-tab { padding: 0.5rem 0.9rem; border: 0; background: none; cursor: pointer; opacity: 0.7; border-bottom: 2px solid transparent; }
-.ss-active { opacity: 1; border-bottom-color: #1f3fff; }
-.ss-item { padding: 0.45rem 0; border-bottom: 1px solid rgba(127, 127, 127, 0.12); }
-.ss-item label { display: inline-flex; gap: 0.5rem; align-items: center; cursor: pointer; }
-.ss-badge { font-size: 0.7rem; padding: 0.05rem 0.4rem; border-radius: 4px; background: rgba(127, 127, 127, 0.15); }
-.ss-public .ss-badge { background: #1f3fff; color: #fff; }
-.ss-changed .ss-badge { background: #f5a524; color: #000; }
-.ss-link { margin-left: 0.75rem; border: 0; background: none; color: #1f3fff; cursor: pointer; }
-.ss-text { white-space: pre-wrap; max-height: 320px; overflow: auto; font-size: 12px; padding: 0.75rem; background: rgba(127, 127, 127, 0.08); border-radius: 6px; }
-.ss-rewrite { display: block; width: 100%; min-height: 4rem; margin-top: 0.4rem; font: inherit; }
-.ss-actions { display: flex; gap: 1rem; align-items: center; margin-top: 1.25rem; }
-.ss-actions button { padding: 0.45rem 0.9rem; border-radius: 6px; border: 1px solid rgba(127, 127, 127, 0.35); background: none; cursor: pointer; }
-.ss-actions .ss-primary { background: #1f3fff; border-color: #1f3fff; color: #fff; }
-.ss-table { width: 100%; border-collapse: collapse; }
-.ss-table td { padding: 0.5rem; border-bottom: 1px solid rgba(127, 127, 127, 0.12); vertical-align: top; }
-.ss-locked { opacity: 0.5; }
-.ss-checks { list-style: none; padding: 0; font-family: ui-monospace, monospace; }
-.ss-turn { padding: 0.3rem 0; white-space: pre-wrap; }
-.ss-turn.ss-user strong { color: #1f3fff; }
-
-.ss-triage { border: 1px solid currentColor; padding: 8px 12px; margin: 12px 0; }
-.ss-why { font-size: 12px; margin: 2px 0 0 24px; }
-.ss-tier-A { color: #047857; }
-.ss-tier-B { color: #b45309; }
-.ss-tier-C { color: #b91c1c; }
+.salts-secrets-board { width: 100%; }
+.salts-secrets-board iframe { display: block; width: 100%; border: 0; background: #f2f2f2; }
+.salts-secrets-error { color: var(--color-destructive); padding: 1rem; }

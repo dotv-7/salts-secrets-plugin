@@ -123,8 +123,7 @@ textarea::placeholder{color:var(--dim);opacity:.8}
 @media (max-width:640px){.bar{padding:0 16px}.bar .r{gap:14px}.bar .line{display:none}}
 </style></head>
 <body>
-<div class="bar"><div class="l"><span class="lbl" id="brandWho">SALT'S ASSISTANT</span><span class="line"></span><span class="lbl">CHAT</span></div>
-  <div class="r"><span id="ownerLinks" hidden><a class="lbl" href="/shelf">CONTEXT</a><a class="lbl" href="/perm">PERMISSIONS</a><a class="lbl" href="/guests">GUESTS</a><a class="lbl" href="/trace">TRACE</a></span><a class="lbl" href="/doc">DOC</a><span id="badge" class="badge guest">GUEST</span><span id="conn" class="conn">CONNECTED</span><button id="model" class="lbl" title="Switch model (owner only)" hidden></button><button id="auth" class="lbl">SIGN IN</button></div></div>
+<!--SALT-NAV--><span id="badge" class="badge guest">GUEST</span><span id="conn" class="conn">CONNECTED</span><button id="model" class="lbl" title="Switch model (owner only)" hidden></button><button id="auth" class="lbl">SIGN IN</button><!--/SALT-NAV-->
 <div class="app">
   <div class="main">
     <div id="log" class="log"></div>
@@ -219,13 +218,13 @@ function blinkLoop(){clearTimeout(blinkTimer);blinkTimer=setTimeout(()=>{portrai
 function talking(on){portrait.classList.toggle('talk',on);}
 function sealed(){clearTimeout(sealTimer);portrait.classList.remove('seal');void portrait.offsetWidth;portrait.classList.add('seal');sealTimer=setTimeout(()=>portrait.classList.remove('seal'),4500);}
 function whoCaption(r){const owner=r==='owner';whoBox.classList.toggle('owner',owner);
-  $('#whoName').textContent=owner?'Lena\'s Hermes':'Salt\'s assistant';$('#tries').hidden=owner;}
-$('#tries').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;inp.value=b.textContent;fit();inp.focus();});
+  $('#whoName').textContent=owner?'Lena\'s Hermes':'Salt\'s assistant';$('#tries').hidden=owner&&!RO;}
+$('#tries').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||busy)return;inp.value=b.textContent;submit();});
 blinkLoop();
 // demo/dev: force a portrait state from the URL hash (#seal, #talk, #blink)
 if(['#seal','#talk','#blink'].includes(location.hash)){portrait.classList.add(location.hash.slice(1));clearTimeout(blinkTimer);}
 function setRole(r,name,ms,ro){RO=!!ro;role=r;who=name||'';whoCaption(r);$('#brandWho').textContent=r==='owner'?'LENA MOREAU':"SALT'S ASSISTANT";models=r==='owner'&&ms||[];mi=0;showModel();const b=$('#badge');b.className='badge '+r;b.textContent=(LABEL[r]||r)+(RO?' · READ ONLY':'')+(who?' · '+who:'');
-  $('#ownerLinks').hidden=r!=='owner';const ab=$('#auth');if(ab)ab.textContent=['owner','admin','user'].includes(r)?'SIGN OUT':'SIGN IN';if(r==='guest')api('/api/new').catch(()=>{});restore();if(RO)sys('Read-only mode: you see what Lena\'s own session sees, but nothing can be saved, and her assistant runs no tools for you.');}
+  document.querySelector('.salt-nav').classList.toggle('hide-own',r!=='owner');const ab=$('#auth');if(ab)ab.textContent=['owner','admin','user'].includes(r)?'SIGN OUT':'SIGN IN';if(r==='guest')api('/api/new').catch(()=>{});restore();if(RO)sys('Read-only mode: you see what Lena\'s own session sees, but nothing can be saved, and her assistant runs no tools for you.');}
 async function api(path,body){const r=await fetch(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
   let j={};try{j=await r.json()}catch{}; if(!r.ok)throw new Error(j.detail||r.status);return j;}
 async function me(){try{const r=await fetch('/api/me');const j=await r.json();online(true);return j;}catch{online(false);return null;}}

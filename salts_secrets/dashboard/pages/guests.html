@@ -40,7 +40,8 @@ input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin-to
 .bar a{border:0;padding:0;background:none;color:var(--accent)}.bar a:hover{background:none;text-decoration:underline;text-underline-offset:4px}
 .bar button.primary{margin-left:6px}
 @media (max-width:640px){.bar{padding:0 16px}.bar .r{gap:14px}.bar .line{display:none}}
-.robar{position:sticky;top:0;z-index:20;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:8px 14px;text-align:center}
+body.rotop nav.salt-nav{top:33px}
+.robar{position:sticky;top:0;z-index:45;margin:0;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:14px 14px 8px;text-align:center}
 .hd{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin:22px 0 6px}
 .hd h1{font:400 34px/1 var(--disp);color:var(--accent);text-transform:uppercase;margin:0}
 .tools{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:10px 0 4px}
@@ -55,8 +56,7 @@ details.gs summary .pb{font-size:10px;color:#fff;background:var(--accent);paddin
 .empty{color:var(--dim);margin:18px 0}
 #more{margin:10px 0}
 </style></head><body>
-<div class="bar"><div class="l"><span class="lbl">LENA MOREAU</span><span class="line"></span><span class="lbl">WHAT GUESTS ASKED</span></div>
-  <div class="r"><a class="lbl" href="/">CHAT</a><a class="lbl" href="/shelf">CONTEXT</a><a class="lbl" href="/perm">PERMISSIONS</a><a class="lbl" href="/trace">TRACE</a><a class="lbl" href="/doc">DOC</a></div></div>
+<!--SALT-NAV--><!--/SALT-NAV-->
 <div class="wrap">
 <div class="hd"><h1>What guests asked</h1><span class="lbl" id="g-count"></span></div>
 <p class="dim">Read from the public store for Lena only; none of this ever enters a session. Each conversation lists what the answer drew on: tools, public notes looked up, and the projection it was given.</p>
@@ -66,7 +66,7 @@ details.gs summary .pb{font-size:10px;color:#fff;background:var(--accent);paddin
 <script>
 const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const PAGE=30;let all=[],limit=PAGE;
-fetch('/api/me').then(r=>r.json()).then(j=>{if(!j.readonly)return;const n=document.createElement('div');n.className='robar';n.textContent='READ ONLY · you see what Lena sees';document.body.prepend(n);}).catch(()=>{});
+fetch('/api/me').then(r=>r.json()).then(j=>{if(!j.readonly)return;const n=document.createElement('div');n.className='robar';n.textContent='READ ONLY · you see what Lena sees';document.body.prepend(n);document.body.classList.add('rotop');}).catch(()=>{});
 function card(s){const when=s.started_at?new Date(s.started_at*1000).toLocaleString():'';const qs=(s.turns||[]).filter(t=>t.role==='user'),probe=(s.probes||[]).length>0;
   const turns=(s.turns||[]).map(t=>t.role==='user'?`<div class="gq ${(s.probes||[]).includes(t.text)?'probe':''}">${esc(t.text)}</div>`:`<div class="ga">${esc(String(t.text).slice(0,600))}</div>`).join('');
   const rc=s.receipt||{},tl=Object.entries(rc.tools||{}).map(([k,v])=>`${k}${v>1?' ×'+v:''}`).join(', ');

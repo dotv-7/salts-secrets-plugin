@@ -36,7 +36,7 @@ def client(tmp_path, monkeypatch):
 
 def test_items_are_private_and_paths_redacted(client):
     http, owner, _ = client
-    body = http.get("/api/plugins/salts-secrets/items").json()
+    body = http.get("/api/plugins/salts-secrets/board/items").json()
     assert body["owner_name"] == "Ada"
     assert body["items"] and all(i["status"] == "private" for i in body["items"])
     assert str(owner) not in json.dumps(body)
@@ -45,39 +45,39 @@ def test_items_are_private_and_paths_redacted(client):
 
 def test_publish_projects_only_ticked_items_into_named_public_profile(client):
     http, _, public = client
-    items = http.get("/api/plugins/salts-secrets/items").json()["items"]
+    items = http.get("/api/plugins/salts-secrets/board/items").json()["items"]
     ok = next(i for i in items if i["title"].startswith("writes a newsletter"))
-    res = http.post("/api/plugins/salts-secrets/publish", json={"public_ids": [ok["id"]]}).json()
+    res = http.post("/api/plugins/salts-secrets/board/save", json={"public_ids": [ok["id"]]}).json()
     assert res["facts"] == 1
     projection = (data_dir(public) / "public_context.json").read_text(encoding="utf-8")
     assert "writes a newsletter" in projection and CANARY not in projection and '"owner_name": "Ada"' in projection
-    assert http.get("/api/plugins/salts-secrets/preview").json()["facts"] == ["writes a newsletter"]
+    assert http.get("/api/plugins/salts-secrets/board/preview").json()["facts"] == ["writes a newsletter"]
 
 
 def test_permissions_never_offer_locked_toolsets(client):
-    http, owner, _ = client
-    catalog = http.get("/api/plugins/salts-secrets/permissions").json()["catalog"]
+    http, _, _ = client
+    catalog = http.get("/api/plugins/salts-secrets/perm").json()["catalog"]
     locked = [t["id"] for t in catalog if t["locked"]]
     assert "terminal" in locked
-    http.post("/api/plugins/salts-secrets/permissions", json={"guest": ["web", "terminal"]})
-    assert http.get("/api/plugins/salts-secrets/permissions").json()["guest"] == ["web"]
+    http.post("/api/plugins/salts-secrets/perm/save", json={"tiers": {"guest": ["web", "terminal"]}})
+    assert http.get("/api/plugins/salts-secrets/perm").json()["policy"]["guest"] == ["web"]
 
 
 def test_check_reports_broken_without_setup(client):
     http, _, _ = client
-    body = http.get("/api/plugins/salts-secrets/check").json()
+    body = http.get("/api/plugins/salts-secrets/health").json()["isolation"]
     assert body["ok"] is False and "BROKEN" in body["line"]
 
 
 def test_classify_and_bulk_publish_never_take_c(client):
-    http, owner, public = client
-    items = http.get("/api/plugins/salts-secrets/items").json()["items"]
-    res = http.post("/api/plugins/salts-secrets/classify", json={}).json()
+    http, _, public = client
+    items = http.get("/api/plugins/salts-secrets/board/items").json()["items"]
+    res = http.post("/api/plugins/salts-secrets/board/classify", json={}).json()
     assert res["model"] is False and res["counts"]["A"] == 0  # no model configured: rules only
     wifi = next(i for i in items if "wifi" in i["title"])
     assert res["items"][wifi["id"]]["tier"] == "C" and "credential_words" in res["items"][wifi["id"]]["rules_hit"]
     ids = [i["id"] for i in items]
-    out = http.post("/api/plugins/salts-secrets/publish", json={
+    out = http.post("/api/plugins/salts-secrets/board/save", json={
         "public_ids": ids, "public_texts": {i: "rewritten" for i in ids},
         "decisions": {i: {"via": "bulk-B"} for i in ids}}).json()
     assert [r["id"] for r in out["rejected"]] == [wifi["id"]]
@@ -85,19 +85,19 @@ def test_classify_and_bulk_publish_never_take_c(client):
     assert CANARY not in projection
     meta = json.loads(projection)["fact_meta"]
     assert meta and all(m["decided_via"] == "bulk-B" and m["mode"] == "rewrite" for m in meta)
-    listed = http.get("/api/plugins/salts-secrets/items").json()["items"]
+    listed = http.get("/api/plugins/salts-secrets/board/items").json()["items"]
     assert all(i["classification"] for i in listed if i["publishable"])
 
 
 def test_a_failed_model_call_is_a_502(client, monkeypatch):
     http, _, _ = client
 
-    async def no_model(system, prompt):
+    def no_model():
         raise RuntimeError("no provider configured")
 
-    monkeypatch.setattr("_salts_secrets_dashboard.classify.host_asker", lambda *a, **k: no_model)
-    item = http.get("/api/plugins/salts-secrets/items").json()["items"][0]
-    res = http.post("/api/plugins/salts-secrets/draft", json={"id": item["id"]})
+    monkeypatch.setattr("_salts_secrets_dashboard.classify.host_llm", no_model)
+    item = http.get("/api/plugins/salts-secrets/board/items").json()["items"][0]
+    res = http.post("/api/plugins/salts-secrets/board/draft", json={"id": item["id"]})
     assert res.status_code == 502 and "RuntimeError" in res.text
 
 
@@ -110,8 +110,35 @@ def test_opening_the_tab_sends_nothing_to_the_model(client, monkeypatch):
         return "{}"
 
     monkeypatch.setattr("_salts_secrets_dashboard.classify.host_asker", lambda *a, **k: ask)
-    opened = http.post("/api/plugins/salts-secrets/classify", json={"rules_only": True}).json()
+    opened = http.post("/api/plugins/salts-secrets/board/classify", json={"rules_only": True}).json()
     assert sent == [] and opened["model"] is False and opened["items"]
     assert not any("no model configured" in it["reason"] for it in opened["items"].values())
-    http.post("/api/plugins/salts-secrets/classify", json={})
+    http.post("/api/plugins/salts-secrets/board/classify", json={})
     assert sent
+
+
+def test_tab_pages_are_the_board_without_chat_trace_or_web_fonts(client):
+    http, _, _ = client
+    html = http.get("/api/plugins/salts-secrets/page/shelf").json()["html"]
+    nav = html[html.index('<nav class="salt-nav'):html.index("</nav>")]
+    assert [label for label in ("CONTEXT", "PERMISSIONS", "GUESTS", "DOC") if f">{label}</a>" in nav] == [
+        "CONTEXT", "PERMISSIONS", "GUESTS", "DOC"]
+    assert ">CHAT</a>" not in nav and ">TRACE</a>" not in nav
+    assert "fonts.googleapis.com" not in html and "fonts.gstatic.com" not in html
+    assert "__SALT_ASSETS__/dist/fonts/fonts.css" in html
+    assert (API.parent / "dist/fonts/fonts.css").is_file()
+    assert "Ada" in html and "Lena" not in html
+    assert http.get("/api/plugins/salts-secrets/page/trace").status_code == 404
+
+
+def test_dashboard_doc_is_the_plugin_guide_not_the_demo_api(client):
+    http, _, _ = client
+    html = http.get("/api/plugins/salts-secrets/page/doc").json()["html"]
+    assert "hermes salts-secrets setup" in html and ">GUIDE</span>" in html
+    assert "/api/chat" not in html and "Lena" not in html
+
+
+def test_doc_facts_describe_this_install(client):
+    http, _, _ = client
+    body = http.get("/api/plugins/salts-secrets/doc").json()
+    assert body["facts"] == 0 and body["viewer"] is False and "BROKEN" in body["isolation"]

@@ -177,14 +177,18 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .tier b{font:500 9.5px/1 var(--mono);letter-spacing:.1em;padding:3px 5px;border:1px solid;margin-right:4px;background:#fff}
 .tier.tA b{color:#047857}.tier.tB b{color:#b45309}.tier.tC b{color:#b91c1c}
 .tier .rh{font:400 10px/1.4 var(--mono);color:#b91c1c}.tier .via{font:400 10px/1 var(--mono);color:var(--blue);margin-left:4px}
-.robar{position:sticky;top:0;z-index:20;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:8px 14px;text-align:center}
+body.rotop nav.salt-nav{top:33px}
+.robar{position:sticky;top:0;z-index:70;margin:0;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:14px 14px 8px;text-align:center}
 .ro #d-save,.ro #t-save,.ro #pol-save,.ro .draft,.ro .mic,.ro [data-bulk]{display:none!important}
-.ro input[type=checkbox],.ro textarea{pointer-events:none;opacity:.6}
+.ro #d-list input,.ro #d-list textarea{opacity:.6;cursor:not-allowed}
+.robar.flash{animation:roflash .45s 2}@keyframes roflash{50%{background:#f59e0b}}
+.rotip{position:fixed;z-index:80;pointer-events:none;background:#b45309;color:#fff;font:600 10.5px/1 var(--mono);letter-spacing:.08em;padding:7px 9px;opacity:0;transition:opacity .15s}.rotip.on{opacity:1}
+
+.ro .detail{top:33px}
 .ent .gst .mic.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
 </style></head><body>
 <div class="grain"></div>
-<div class="top"><div class="l"><span class="lbl">LENA MOREAU</span><span class="line"></span><span class="lbl">CONTEXT</span></div>
-  <div class="r"><span class="sbox"><input id="q" type="search" placeholder="SEARCH HER 3,800 ENTRIES…" autocomplete="off"><div class="sr" id="sr"></div></span><a class="lbl" href="/">CHAT</a><a class="lbl" href="/perm">PERMISSIONS</a><a class="lbl" href="/guests">GUESTS</a><a class="lbl" href="/trace">TRACE</a><a class="lbl" href="/doc">DOC</a><span class="lbl" id="count"></span></div></div>
+<!--SALT-NAV--><span class="sbox"><input id="q" type="search" placeholder="SEARCH HER 3,800 ENTRIES…" autocomplete="off"><div class="sr" id="sr"></div></span><!--/SALT-NAV-->
 
 <section class="hero">
   <div class="eyebrow"><span class="lbl">WHAT EACH SESSION IS BUILT FROM</span><span class="line" style="width:40px;height:1px;background:currentColor"></span><span class="lbl" id="hero-n"></span><span class="line" style="width:40px;height:1px;background:currentColor"></span><button class="lbl box" id="pol-open">WHAT MAY BE SHARED · EDIT</button></div>
@@ -207,7 +211,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 </div>
 
 <div class="detail" id="detail">
-  <div class="dtop"><button class="lbl box close" id="close">CLOSE</button><span class="lbl">LENA MOREAU —— TWO SESSIONS</span></div>
+  <div class="dtop"><button class="lbl box close" id="close">CLOSE</button><span class="lbl" id="dWho">TWO SESSIONS</span></div>
   <div class="dhead">
     <div><span class="lbl su" id="d-su"></span><div class="ti" id="d-ti"></div><div class="desc" id="d-desc"></div><div class="counts" id="d-counts"></div></div>
     <div><div class="acts"><button class="act" id="d-guest">View as guest</button><button class="act primary" id="d-save" disabled>Save &amp; sync</button></div><div class="cost" id="d-cost"></div></div>
@@ -298,7 +302,7 @@ function guestCell(s){
   return `<div class="cell none"><div class="k"><span>${g.state==='cross'?'NOTHING CROSSED YET':'NOT IN THIS SESSION'}</span></div><div class="why">${esc(g.why)}</div></div>`;}
 function build(){
   const total=items.length,crossed=pub.size;
-  $('#count').textContent=`${fmt(total)} ENTRIES · ${fmt(crossed)} CROSS`;$('#hero-n').textContent=`${SOURCES.length} SOURCES`;
+  $('#hero-n').textContent=`${SOURCES.length} SOURCES`;
   $('#m-cross').textContent=hits?`${fmt(hits.size)} SEARCH HITS`:`${fmt(crossed)} ENTRIES TICKED`;
   if(meta.owner_home)$('#m-owner').textContent='owner profile · '+meta.owner_home;
   if(meta.public_home)$('#m-guest').textContent='public profile · '+meta.public_home;
@@ -341,7 +345,7 @@ const spansOs=spansOf;
 function chips(t,empty){const f=flagsOf(t);const ks=Object.keys(f);if(!ks.length)return `<div class="flags"><span class="ok">${empty||'nothing flagged'}</span></div>`;return `<div class="flags">${ks.map(k=>`<span>${k} ×${f[k]}</span>`).join('')}</div>`;}
 const isSame=id=>{const o=(texts[id]||'').trim(),v=(drafts[id]!==undefined?drafts[id]:(texts[id]||'')).trim();return v===o||!v;};
 // Layer two: Hermes' own model drafts the guest version, once per original (cached by fingerprint server-side).
-async function draftOne(id,force){if(busy.has(id)||demo)return;busy.add(id);rerow(id);
+async function draftOne(id,force){if(busy.has(id)||demo||document.body.classList.contains('ro'))return;busy.add(id);rerow(id);
   try{const r=await fetch('/api/board/draft',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id,force:!!force})});if(!r.ok)throw new Error((await r.json()).detail||r.status);const j=await r.json();
     if(!j.cached){draftN++;draftTok+=j.tokens||0;}
     if(j.draft==='NOTHING_SAFE_TO_SHARE'){drafts[id]='';nothingSafe.add(id);}else{drafts[id]=j.draft;nothingSafe.delete(id);}asIs[id]=false;}
@@ -351,8 +355,10 @@ function rerow(id){const row=document.querySelector(`.ent[data-id="${CSS.escape(
 // Guest boxes grow with their text, like the raw original on the left: no scrollbar, no resize grip.
 function fit(ta){ta.style.height='auto';ta.style.height=(ta.scrollHeight+2)+'px';}
 function fitAll(){document.querySelectorAll('#d-list textarea').forEach(fit);alignAll();}
-// The guest box starts on the same line as the raw original, whatever the title, path and tier lines above it take.
-function alignAll(){const wide=!matchMedia('(max-width:900px)').matches;document.querySelectorAll('#d-list .ent').forEach(e=>{const a=e.querySelector('pre.raw'),k=e.querySelector('.gst .k'),b=e.querySelector('.gst textarea');if(!a||!k||!b)return;a.style.marginTop=k.style.marginTop='';if(!wide)return;const d=a.getBoundingClientRect().top-b.getBoundingClientRect().top;if(d>0)k.style.marginTop=d+'px';else if(d<0)a.style.marginTop=(8-d)+'px';});}
+// The guest box (or its empty placeholder) starts on the same line as the raw original, whatever the title, path and tier lines above it take.
+function alignAll(){const wide=!matchMedia('(max-width:900px)').matches;document.querySelectorAll('#d-list .ent').forEach(e=>{const a=e.querySelector('pre.raw'),g=e.querySelector('.gst .ghost'),k=e.querySelector('.gst .k'),b=e.querySelector('.gst textarea');if(!a)return;
+  if(g){g.style.marginTop=g.style.height='';if(!wide)return;g.style.marginTop=(2+a.getBoundingClientRect().top-g.getBoundingClientRect().top)+'px';g.style.height=a.offsetHeight+'px';return;}
+  if(!k||!b)return;a.style.marginTop=k.style.marginTop='';if(!wide)return;const d=a.getBoundingClientRect().top-b.getBoundingClientRect().top;if(d>0)k.style.marginTop=d+'px';else if(d<0)a.style.marginTop=(8-d)+'px';});}
 addEventListener('resize',alignAll);
 function entHTML(it){const on=pub.has(it.id),lk=!it.publishable,chg=it.status==='changed'&&!on;
   const st=lk?'locked':on?'public':chg?'changed':'private';
@@ -459,7 +465,15 @@ $('#d-list').addEventListener('click',e=>{const m=e.target.closest('.mic');if(!m
     ta.value=ta.value.trim()?ta.value.trimEnd()+' '+t:t;ta.dispatchEvent(new Event('input',{bubbles:true}));}};
   rec.onend=()=>{rec=null;m.textContent='MIC';m.classList.remove('on');};rec.onerror=()=>rec&&rec.stop();rec.start();});
 load();
-fetch('/api/me').then(r=>r.json()).then(j=>{if(!j.readonly)return;document.body.classList.add('ro');const n=document.createElement('div');n.className='robar';n.textContent='READ ONLY · you see what Lena sees; saving, drafting and publishing are off';document.body.prepend(n);}).catch(()=>{});
+$('#dWho').textContent=(($('#brandWho')||{}).textContent||'')+' —— TWO SESSIONS';
+const RO_CTRL='#d-list input,#d-list textarea';
+// Read-only: a click on a control flashes the bar and says why nothing happens.
+function roHint(e){if(!document.body.classList.contains('ro')||!e.target.closest||!e.target.closest(RO_CTRL))return;e.preventDefault();
+  const b=document.querySelector('.robar');if(b){b.classList.remove('flash');void b.offsetWidth;b.classList.add('flash');}
+  let n=document.querySelector('.rotip');if(!n){n=document.createElement('div');n.className='rotip';n.textContent='READ ONLY · you can look, not change';document.body.append(n);}
+  n.style.left=Math.min(e.clientX+12,innerWidth-300)+'px';n.style.top=(e.clientY+14)+'px';n.classList.add('on');clearTimeout(roHint.t);roHint.t=setTimeout(()=>n.classList.remove('on'),1600);}
+addEventListener('mousedown',roHint,true);addEventListener('click',roHint,true);
+fetch('/api/me').then(r=>r.json()).then(j=>{if(!j.readonly)return;document.body.classList.add('ro');const n=document.createElement('div');n.className='robar';n.textContent='READ ONLY · you see what Lena sees; saving, drafting and publishing are off';document.body.prepend(n);document.body.classList.add('rotop');}).catch(()=>{});
 
 async function loadGuests(){try{const r=await fetch('/api/board/guests');if(!r.ok)return;const c=(await r.json()).counts||{};
   $('#g-count').textContent=`${c.sessions||0} SESSIONS · ${c.questions||0} QUESTIONS · ${c.probes||0} PROBES`;}catch{}}

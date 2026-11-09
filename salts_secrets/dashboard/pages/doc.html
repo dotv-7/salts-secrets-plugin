@@ -6,7 +6,7 @@
 <style>
 :root{--mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,"PingFang SC",monospace;--disp:"Antonio",Impact,"PingFang SC",sans-serif;--bg:#f2f2f2;--text:#000091;--dim:#6b6bd6;--accent:#0000f2;--hair:rgba(0,0,242,.15)}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:13.5px/1.7 var(--mono)}
-body::before{content:"";position:fixed;inset:0;border:6px solid var(--accent);pointer-events:none}
+body::before{content:"";position:fixed;inset:0;border:6px solid var(--frame,#7f7fff);pointer-events:none;z-index:50}
 .wrap{max-width:920px;margin:0 auto;padding:0 24px 80px}
 .bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px 0 12px;border-bottom:1px solid var(--accent)}
 .brand{color:var(--accent);font:400 26px/1 var(--disp);text-transform:uppercase;flex:1}
@@ -17,8 +17,7 @@ pre{position:relative;background:#fff;border:1px solid var(--hair);padding:12px 
 pre button{position:absolute;top:6px;right:6px;font:600 10px var(--mono);letter-spacing:.08em;color:var(--accent);background:#fff;border:1px solid var(--accent);cursor:pointer;padding:2px 8px}
 .hook{margin:18px 0 10px;padding-left:14px;border-left:3px solid var(--accent);font-style:italic;font-size:17px;color:var(--accent)}
 table{border-collapse:collapse;width:100%;font-size:12.5px}td,th{border-bottom:1px solid var(--hair);padding:5px 8px;text-align:left;vertical-align:top}th{color:var(--dim);font-weight:500}
-</style></head><body><div class="wrap">
-<div class="bar"><span class="brand">Salt · developer doc</span><a href="/">CHAT</a><a href="/shelf">CONTEXT</a></div>
+</style></head><body><!--SALT-NAV--><!--/SALT-NAV--><div class="wrap">
 <blockquote class="hook">What if the Hermes you&#39;ve spent thousands of hours growing with could talk to everyone, without giving away a single secret?</blockquote>
 <p class="dim">Lena (fictional) is an anonymous crypto KOL: Salt, @saltwater_sats, 310k followers on X. Her Hermes knows her methods and her life; her followers reach Salt's twin, which has the first and none of the second.</p>
 <p>How to call this Hermes from code: curl, a script, or another agent. Everything goes through this site's HTTP API at <code class="base"></code>; the Hermes API server itself is not exposed. Two rooms sit behind it: the <b>guest room</b> (anyone, holds only what Lena approved) and Lena's <b>own room</b> (read-only passphrase, her full memory, no tools).</p>

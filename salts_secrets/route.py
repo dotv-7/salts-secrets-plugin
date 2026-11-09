@@ -11,7 +11,8 @@ multiplexed gateway the gateway hooks fire in the profile a message was routed t
 - owner profile (``make_hook``, ``post_gateway_admission``): whatever the gateway admitted into the owner
   profile that is not the owner's own DM (the owner speaking in a Discord server, where no route can tell the
   owner's DM from a group; an admitted sender on a platform without routes) is answered by the public profile
-  over its local API, and the gateway delivers that reply.
+  over its local API, and the gateway delivers that reply. Webhook deliveries (``chat_type`` ``webhook``: the
+  owner's own signed webhook routes, Microsoft Graph notifications) are not chat and pass to the owner agent.
 
 ``post_gateway_admission`` fails open: a callback that raises or outlives ``plugins.hook_callback_timeout``
 hands the message to the owner agent. The owner hook therefore never raises and stops waiting for the public
@@ -117,6 +118,11 @@ def is_owner_dm(src: Any, owners: set[str]) -> bool:
         return False
     uid = str(field(src, "user_id") or "")
     return bool(uid) and f"{platform_name(field(src, 'platform'))}:{uid}".lower() in owners
+
+
+def is_webhook_delivery(src: Any) -> bool:
+    """A delivery to one of the owner's webhook routes, which Hermes authenticated before admission."""
+    return src is not None and field(src, "chat_type") == "webhook"
 
 
 def guest_session_id(src: Any) -> str:
@@ -288,7 +294,8 @@ def answer_deadline() -> Optional[float]:
 
 def make_hook(settings: Settings, limiter: RateLimiter, asker=ask_public_profile,
               deadline: Callable[[], Optional[float]] = answer_deadline):
-    """Owner profile, ``post_gateway_admission``: answer every admitted message that is not the owner's DM."""
+    """Owner profile, ``post_gateway_admission``: answer every admitted message that is neither the owner's DM
+    nor a webhook delivery."""
 
     async def answer(source: Any, text: str) -> dict:
         if field(source, "is_bot"):
@@ -306,7 +313,7 @@ def make_hook(settings: Settings, limiter: RateLimiter, asker=ask_public_profile
 
     async def hook(source: Any = None, text: str = "", **_: Any) -> Optional[dict]:
         try:
-            if is_owner_dm(source, settings.owners):
+            if is_owner_dm(source, settings.owners) or is_webhook_delivery(source):
                 return None
         except Exception as exc:  # noqa: BLE001 - an unreadable source is a guest, never the owner
             log.warning("%s: could not classify message (%s); treating it as a guest", NAME, exc)

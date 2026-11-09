@@ -1,0 +1,6 @@
+/* Latin subsets of the board's typefaces, bundled so the tab loads no remote fonts. SIL OFL 1.1: see OFL-*.txt. */
+@font-face{font-family:'Antonio';font-style:normal;font-weight:100 700;font-display:swap;src:url(Antonio.woff2) format('woff2')}
+@font-face{font-family:'EB Garamond';font-style:normal;font-weight:400;font-display:swap;src:url(EBGaramond.woff2) format('woff2')}
+@font-face{font-family:'EB Garamond';font-style:italic;font-weight:400;font-display:swap;src:url(EBGaramond-Italic.woff2) format('woff2')}
+@font-face{font-family:'Inter Tight';font-style:normal;font-weight:100 900;font-display:swap;src:url(InterTight.woff2) format('woff2')}
+@font-face{font-family:'JetBrains Mono';font-style:normal;font-weight:100 800;font-display:swap;src:url(JetBrainsMono.woff2) format('woff2')}
