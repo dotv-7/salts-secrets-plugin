@@ -92,3 +92,35 @@ def test_empty_existing_profile_is_reused_without_reset(owner):
     (home / "profiles/public").mkdir(parents=True)
     assert cli.cmd_setup(ns(owner=["telegram:42"])) in (0, 1)
     assert (data_dir(home / "profiles/public") / cli.SETUP_MARKER).exists()
+
+
+def test_setup_never_copies_model_credentials_to_the_public_profile(owner, capsys):
+    home, _ = owner
+    (home / "config.yaml").write_text(
+        "# my settings\nmodel:\n  default: gpt-x\n  api_key: sk-OWNER-SECRET\nproviders:\n  x:\n    api_key: sk-OTHER\n",
+        encoding="utf-8")
+    cli.cmd_setup(ns(owner=["telegram:42"]))
+    public_cfg = (home / "profiles/public/config.yaml").read_text(encoding="utf-8")
+    assert "sk-OWNER-SECRET" not in public_cfg and "sk-OTHER" not in public_cfg
+    assert "hermes -p public model" in capsys.readouterr().out
+    assert (home / "config.yaml").read_text(encoding="utf-8").startswith("# my settings")
+
+
+def test_public_copy_is_installed_like_the_owner_copy(owner):
+    home, calls = owner
+    sha = "a" * 40
+    (home / "plugins").mkdir()
+    (home / "plugins" / cli.INSTALL_METADATA).write_text(
+        f'{{"salts-secrets": {{"source": "https://github.com/dotv-7/salts-secrets-plugin.git", "revision": "{sha}", '
+        f'"pinned": true, "catalog": {{"name": "salts-secrets"}}}}}}', encoding="utf-8")
+    cli.cmd_setup(ns(owner=["telegram:42"]))
+    installs = [(p, a) for p, a in calls if a[:2] == ("plugins", "install")]
+    assert installs == [("public", ("plugins", "install", "salts-secrets", "--enable", "--yes-deps", "--ref", sha))]
+    assert not (home / "profiles/public/plugins/salts-secrets").exists()
+
+
+def test_a_checkout_is_copied_when_hermes_did_not_install_it(owner):
+    home, calls = owner
+    cli.cmd_setup(ns(owner=["telegram:42"]))
+    assert not [a for _, a in calls if a[:2] == ("plugins", "install")]
+    assert (home / "profiles/public/plugins/salts-secrets/plugin.yaml").exists()

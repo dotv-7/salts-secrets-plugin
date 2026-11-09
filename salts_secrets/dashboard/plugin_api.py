@@ -105,7 +105,7 @@ def run_classify(body: Classify):
     """Rules + the owner's model sort every publishable item into A/B/C. Nothing is published here.
     ``rules_only`` (the tab opening) sends nothing to the model; only the Classify button does."""
     owner, _, workspaces, _ = _homes()
-    ask = None if body.rules_only else classify.openai_asker(classify.model_settings(owner))
+    ask = None if body.rules_only else classify.host_asker()
     return classify.run(owner, context.scan(owner, workspaces), ask, body.force)
 
 
@@ -119,13 +119,13 @@ def draft(body: Draft):
     import asyncio
 
     owner, _, workspaces, _ = _homes()
-    ask = classify.openai_asker(classify.model_settings(owner))
-    if ask is None:
-        raise HTTPException(503, "no model configured in the owner profile")
     item = next((i for i in context.scan(owner, workspaces) if i.id == body.id), None)
     if item is None:
         raise HTTPException(404, "item changed or was removed; reload")
-    return {"draft": asyncio.run(classify.draft(item, ask))}
+    try:
+        return {"draft": asyncio.run(classify.draft(item, classify.host_asker(purpose="draft")))}
+    except Exception as exc:  # noqa: BLE001 - provider and trust errors alike become one HTTP answer
+        raise HTTPException(502, f"model call failed: {type(exc).__name__}") from exc
 
 
 @router.post("/publish")

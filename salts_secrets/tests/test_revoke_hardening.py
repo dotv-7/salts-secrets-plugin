@@ -139,4 +139,4 @@ def test_guest_role_registers_the_reply_check():
     ctx = type("Ctx", (), {"register_hook": lambda self, n, f, **_: hooks.append(n),
                            "get_config": lambda self, k, default=None: default})()
     route.register_guest(ctx)
-    assert {"pre_gateway_dispatch", "pre_llm_call", "transform_llm_output"} <= set(hooks)
+    assert {"pre_gateway_dispatch", "post_gateway_admission", "pre_llm_call", "transform_llm_output"} <= set(hooks)

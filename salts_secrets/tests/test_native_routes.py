@@ -125,29 +125,21 @@ def test_every_platform_toolset_is_pinned_to_the_guest_tier(tmp_path):
         assert not enabled & {"terminal", "file", "session_search", "memory"}
 
 
-class _Adapter:
-    def __init__(self):
-        self.sent = []
-
-    async def send(self, chat_id, content, reply_to=None, metadata=None):
-        self.sent.append((chat_id, content))
-
-
 def _guest_event(user="9", is_bot=False):
     src = SimpleNamespace(platform=SimpleNamespace(value="telegram"), chat_id=user, chat_type="dm",
                           user_id=user, is_bot=is_bot)
     return SimpleNamespace(text="hi", source=src, message_id="m")
 
 
-def test_guest_hook_limits_each_guest_and_drops_bots():
-    adapter = _Adapter()
-    gateway = SimpleNamespace(_delivery_adapter_for=lambda src: adapter)
-    hook = route.make_guest_hook(route.RateLimiter(2))
-    run = lambda event: asyncio.run(hook(event, gateway=gateway))  # noqa: E731
-    assert run(_guest_event()) is None and run(_guest_event()) is None
-    assert run(_guest_event())["action"] == "skip" and adapter.sent == [("9", route.NOTICE_RATE)]
-    assert run(_guest_event(user="10")) is None
-    assert run(_guest_event(user="11", is_bot=True))["action"] == "skip" and len(adapter.sent) == 1
+def test_guest_hooks_limit_each_guest_after_admission_and_drop_bots():
+    before, admitted = route.make_guest_hooks(route.RateLimiter(2))
+    run = lambda user: asyncio.run(admitted(source={"platform": "telegram", "chat_id": user, "chat_type": "dm",
+                                                     "user_id": user}))
+    assert run("9") is None and run("9") is None
+    assert run("9") == {"action": "handled", "reply": route.NOTICE_RATE}
+    assert run("10") is None
+    assert asyncio.run(before(_guest_event(user="11", is_bot=True)))["action"] == "skip"
+    assert asyncio.run(before(_guest_event(user="12"))) is None
 
 
 @pytest.fixture

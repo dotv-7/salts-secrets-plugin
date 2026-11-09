@@ -63,38 +63,26 @@ def _save_cache(owner_home: Path, cache: dict) -> None:
     _atomic_write(_cache_path(owner_home), json.dumps(cache, ensure_ascii=False, indent=1))
 
 
-def model_settings(owner_home: Path) -> dict:
-    """OpenAI-compatible or Anthropic-messages endpoint from the owner's config.yaml ``model:`` block (the model that serves her)."""
-    try:
-        cfg = yaml.safe_load((Path(owner_home) / "config.yaml").read_text(encoding="utf-8")) or {}
-    except (OSError, yaml.YAMLError):
-        cfg = {}
-    m = cfg.get("model") if isinstance(cfg.get("model"), dict) else {}
-    return {"base_url": str(m.get("base_url") or "").rstrip("/"), "api_key": str(m.get("api_key") or ""),
-            "model": str(m.get("default") or ""), "api_mode": str(m.get("api_mode") or "")}
+def host_llm():
+    """The owner's model through Hermes (``agent.plugin_llm``, what ``ctx.llm`` hands out): Hermes resolves the
+    provider, credentials (config, ``.env`` or OAuth) and fallback; the plugin never sees a key. The dashboard
+    API has no plugin context, so it binds the same facade to this plugin's id, without any override."""
+    from agent.plugin_llm import PluginLlm
+
+    from .home import NAME
+
+    return PluginLlm(plugin_id=NAME)
 
 
-def openai_asker(settings: dict) -> Optional[Ask]:
-    if not (settings.get("base_url") and settings.get("api_key") and settings.get("model")):
-        return None
+def host_asker(llm: Any = None, purpose: str = "classify", max_tokens: int = 2500, temperature: float = 0) -> Ask:
+    llm = llm or host_llm()
 
     async def ask(system: str, user: str) -> str:
-        import httpx
-
-        payload = {"model": settings["model"], "temperature": 0, "max_tokens": 2500, "stream": False,
-                   "thinking": {"type": "disabled"},
-                   "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}]}
-        async with httpx.AsyncClient(timeout=120) as client:
-            if settings.get("api_mode") == "anthropic_messages":
-                payload["system"] = payload["messages"].pop(0)["content"]
-                r = await client.post(f"{settings['base_url']}/v1/messages", json=payload,
-                                      headers={"x-api-key": settings["api_key"], "anthropic-version": "2023-06-01"})
-                r.raise_for_status()
-                return "".join(b.get("text", "") for b in r.json().get("content") or [] if b.get("type") == "text")
-            r = await client.post(f"{settings['base_url']}/chat/completions", json=payload,
-                                  headers={"Authorization": f"Bearer {settings['api_key']}"})
-            r.raise_for_status()
-            return str(((r.json().get("choices") or [{}])[0].get("message") or {}).get("content") or "")
+        result = await llm.acomplete(
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=temperature, max_tokens=max_tokens, purpose=f"salts-secrets.{purpose}",
+        )
+        return result.text or ""
 
     return ask
 
@@ -150,7 +138,7 @@ async def classify(owner_home: Path, items: list, ask: Optional[Ask], force: boo
     rules = privacy.load_rules(owner_home)
     cache = load_cache(owner_home)
     todo = [it for it in items if it.publishable and (force or (cache.get(it.id) or {}).get("fingerprint") != it.fingerprint)]
-    errors = []
+    errors, answered = [], []
     if ask and todo:
         sem = asyncio.Semaphore(PARALLEL)
 
@@ -161,6 +149,7 @@ async def classify(owner_home: Path, items: list, ask: Optional[Ask], force: boo
                 except Exception as exc:  # noqa: BLE001
                     errors.append(type(exc).__name__)
                     return
+            answered.append(len(answers))
             for it in batch:
                 if it.id in answers:
                     cache[it.id] = {**answers[it.id], "fingerprint": it.fingerprint, "at": int(time.time())}
@@ -169,7 +158,8 @@ async def classify(owner_home: Path, items: list, ask: Optional[Ask], force: boo
         _save_cache(owner_home, cache)
     result = cached(owner_home, items, rules)
     counts = {t: sum(1 for r in result.values() if r["tier"] == t) for t in privacy.TIERS}
-    return {"items": result, "counts": counts, "model": bool(ask), "errors": errors,
+    model = bool(ask) and (not todo or bool(answered))  # a model that failed every batch left rules only
+    return {"items": result, "counts": counts, "model": model, "errors": errors,
             "rules": privacy.describe(rules)}
 
 

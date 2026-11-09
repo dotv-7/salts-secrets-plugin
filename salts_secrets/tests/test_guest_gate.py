@@ -118,7 +118,7 @@ def test_profile_template_matches_gate():
     assert cfg["memory"]["provider"] == "" and cfg["memory"]["nudge_interval"] == 0
     manifest = yaml.safe_load((ROOT / "plugin.yaml").read_text())
     assert manifest["name"] == "salts-secrets"
-    assert {"pre_tool_call", "pre_gateway_dispatch"} <= set(manifest["provides_hooks"])
+    assert {"pre_tool_call", "pre_gateway_dispatch", "post_gateway_admission"} <= set(manifest["provides_hooks"])
 
 
 def _registrations(monkeypatch, home, settings):

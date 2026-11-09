@@ -24,7 +24,9 @@ participant "Your agent" as O #FFD9A0
 S -> G : message in a group or DM
 G -> G : not your user id:\nroute to the public profile
 G -> H : pre_gateway_dispatch
-H -> H : bots out, 20 messages an hour,\nstale session -> fresh one
+H -> H : bots out,\nstale session -> fresh one
+G -> H : post_gateway_admission
+H -> H : 20 messages an hour
 H -> P : the turn
 P -> P : prompt = its own SOUL\n+ approved notes
 P -> T : tool call (web, image...)

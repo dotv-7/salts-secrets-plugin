@@ -169,18 +169,18 @@ def test_matrix(world, ingress, actor, platform, chat_id, chat_type, user_id, gu
         asked.append(session_id)
         return "public reply"
 
-    sent = []
-    adapter = SimpleNamespace(send=lambda chat, content, reply_to=None, metadata=None: sent.append(content) or _done())
+    from gateway.run_inbound_consumer import run_post_admission_hook
+    from hermes_cli.plugins import get_plugin_manager
+
     settings = route.Settings(owners=set(OWNERS), env=lambda n, d: "k" * 32 if n == route.PUBLIC_KEY_ENV else d)
-    hook = route.make_hook(settings, route.RateLimiter(20), asker)
-    gateway = SimpleNamespace(_delivery_adapter_for=lambda src: adapter)
-    result = asyncio.run(hook(SimpleNamespace(text="hi", source=source, message_id="m"), gateway=gateway))
-    assert result["action"] == "skip" and asked and sent == ["public reply"]
+    manager = get_plugin_manager()
+    manager._discovered = True
+    manager._hooks.setdefault("post_gateway_admission", []).append(
+        route.make_hook(settings, route.RateLimiter(20), asker, deadline=lambda: 5.0))
+    event = SimpleNamespace(text="hi", message_id="m")
+    assert asyncio.run(run_post_admission_hook(world.runner, event, source, "k")) == (True, "public reply")
+    assert asked
     _guest_probes(world, "api_server")
-
-
-async def _done():
-    return None
 
 
 def test_web_guests_use_the_public_profile_api(world):

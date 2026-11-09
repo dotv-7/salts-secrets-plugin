@@ -27,7 +27,7 @@ def _read_yaml(path: Path) -> dict:
 
 
 def _write_yaml(path: Path, data: dict) -> None:
-    path.write_text(yaml.safe_dump(data, sort_keys=False, allow_unicode=True), encoding="utf-8")
+    tiers.write_config(path, data)
 
 
 def _hermes(*args: str, profile: str | None = None) -> None:
@@ -160,22 +160,15 @@ def cmd_setup(args: argparse.Namespace) -> int:
     cfg = _read_yaml(pub / "config.yaml")
     for key, value in _read_yaml(TEMPLATES / "config.yaml").items():
         cfg[key] = value if not isinstance(value, dict) else {**(cfg.get(key) or {}), **value}
-    if owner_cfg.get("model") and "model" not in cfg:
-        cfg["model"] = owner_cfg["model"]
-        say("model settings copied from the owner profile")
-    if owner_cfg.get("providers") and "providers" not in cfg:
-        cfg["providers"] = owner_cfg["providers"]
     _enable(cfg)
     _settings(cfg).update(role="public", public_profile=pub.name, owner_name=owner_name)
     if _settings(owner_cfg).get("guest_rate_per_hour"):
         _settings(cfg)["guest_rate_per_hour"] = _settings(owner_cfg)["guest_rate_per_hour"]
     _write_yaml(pub / "config.yaml", cfg)
 
-    target = pub / "plugins" / NAME
-    if target.resolve() != PLUGIN_DIR:
-        shutil.rmtree(target, ignore_errors=True)
-        shutil.copytree(PLUGIN_DIR, target, ignore=shutil.ignore_patterns("__pycache__", "tests"))
-    say(f"{NAME} installed and enabled")
+    say(_install_public(owner, pub))
+    if not cfg.get("model"):
+        say(f"no model yet: choose one with `hermes -p {pub.name} model` (its credentials stay in that profile)")
 
     print("owner profile")
     _enable(owner_cfg)
@@ -218,12 +211,51 @@ def cmd_setup(args: argparse.Namespace) -> int:
 
 
 def _next_steps(public: str) -> int:
-    print(
-        "\nnext:\n  1. restart the gateway (hermes gateway restart)\n"
-        "  2. hermes salts-secrets check   (also proves the running gateway loaded the routing hook)\n"
-        "  3. open the dashboard (hermes dashboard) and approve what guests may know under Context"
-    )
+    steps = ["restart the gateway (hermes gateway restart)",
+             "hermes salts-secrets check   (also proves the running gateway loaded the routing hook)",
+             "open the dashboard (hermes dashboard) and approve what guests may know under Context"]
+    if not _read_yaml(current() / "profiles" / public / "config.yaml").get("model"):
+        steps.insert(0, f"hermes -p {public} model   (the model guests are answered with)")
+    print("\nnext:\n" + "\n".join(f"  {n}. {step}" for n, step in enumerate(steps, 1)))
     return 0
+
+
+INSTALL_METADATA = ".install-metadata.json"
+
+
+def _install_record(home: Path) -> dict:
+    """What ``hermes plugins install`` recorded for this plugin in ``home`` (source, revision, catalog)."""
+    try:
+        record = json.loads((home / "plugins" / INSTALL_METADATA).read_text(encoding="utf-8-sig")).get(NAME)
+    except (OSError, ValueError, AttributeError):
+        return {}
+    return record if isinstance(record, dict) else {}
+
+
+def _install_public(owner: Path, pub: Path) -> str:
+    """Install the guest copy the way the owner's copy was installed, so Hermes pins and updates it; a copy
+    that Hermes did not install (a checkout, a manual drop) is copied as it is."""
+    target = pub / "plugins" / NAME
+    record = _install_record(owner)
+    if not record.get("source"):
+        if target.resolve() != PLUGIN_DIR:
+            shutil.rmtree(target, ignore_errors=True)
+            shutil.copytree(PLUGIN_DIR, target, ignore=shutil.ignore_patterns("__pycache__", "tests"))
+        return f"{NAME} copied from {PLUGIN_DIR} (not installed by `hermes plugins install`) and enabled"
+    revision = str(record.get("revision") or "")
+    current_record = _install_record(pub)
+    if target.is_dir() and current_record.get("revision") == revision and revision:
+        return f"{NAME} already installed at {revision[:12]} and enabled"
+    if target.is_dir() and not current_record:
+        shutil.rmtree(target)
+    args = ["plugins", "install", NAME if record.get("catalog") else str(record["source"]), "--enable", "--yes-deps"]
+    if revision:
+        args += ["--ref", revision]
+    if target.is_dir() or not record.get("catalog"):
+        # Same source and commit the owner already installed and accepted; the catalog pin needs no consent.
+        args.append("--force")
+    _hermes(*args, profile=pub.name)
+    return f"{NAME} installed with `hermes -p {pub.name} plugins install` at {revision[:12] or 'the catalog pin'}"
 
 
 def _sync(owner: Path, pub: Path, owner_cfg: dict, say) -> dict:

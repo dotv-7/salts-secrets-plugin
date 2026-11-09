@@ -458,7 +458,7 @@ def test_opening_the_shelf_sends_nothing_to_the_model(client, monkeypatch):
         sent.append(prompt)
         return "{}"
 
-    monkeypatch.setattr("salts_secrets.classify.openai_asker", lambda settings: ask)
+    monkeypatch.setattr("salts_secrets.classify.host_asker", lambda *a, **k: ask)
     opened = client.post("/api/board/classify", json={"rules_only": True}).json()
     assert sent == [] and opened["model"] is False and opened["items"]
     client.post("/api/board/classify", json={})

@@ -89,10 +89,16 @@ def test_classify_and_bulk_publish_never_take_c(client):
     assert all(i["classification"] for i in listed if i["publishable"])
 
 
-def test_draft_needs_a_model(client):
+def test_a_failed_model_call_is_a_502(client, monkeypatch):
     http, _, _ = client
+
+    async def no_model(system, prompt):
+        raise RuntimeError("no provider configured")
+
+    monkeypatch.setattr("_salts_secrets_dashboard.classify.host_asker", lambda *a, **k: no_model)
     item = http.get("/api/plugins/salts-secrets/items").json()["items"][0]
-    assert http.post("/api/plugins/salts-secrets/draft", json={"id": item["id"]}).status_code == 503
+    res = http.post("/api/plugins/salts-secrets/draft", json={"id": item["id"]})
+    assert res.status_code == 502 and "RuntimeError" in res.text
 
 
 def test_opening_the_tab_sends_nothing_to_the_model(client, monkeypatch):
@@ -103,7 +109,7 @@ def test_opening_the_tab_sends_nothing_to_the_model(client, monkeypatch):
         sent.append(prompt)
         return "{}"
 
-    monkeypatch.setattr("_salts_secrets_dashboard.classify.openai_asker", lambda settings: ask)
+    monkeypatch.setattr("_salts_secrets_dashboard.classify.host_asker", lambda *a, **k: ask)
     opened = http.post("/api/plugins/salts-secrets/classify", json={"rules_only": True}).json()
     assert sent == [] and opened["model"] is False and opened["items"]
     assert not any("no model configured" in it["reason"] for it in opened["items"].values())

@@ -364,6 +364,13 @@ def platform_keys() -> list[str]:
     return sorted({p.value for p in Platform} | {"cli", "cron"})
 
 
+def write_config(path: Path, cfg: dict) -> None:
+    """Through Hermes' own config writer: comments and keys the plugin did not touch survive."""
+    from hermes_cli.config import atomic_config_write
+
+    atomic_config_write(path, cfg)
+
+
 def _narrow_config(path: Path, toolsets: list[str]) -> None:
     if not path.exists():
         return
@@ -380,9 +387,7 @@ def _narrow_config(path: Path, toolsets: list[str]) -> None:
     plugins = cfg.setdefault("plugins", {})
     enabled = [p for p in plugins.get("enabled") or [] if isinstance(p, str)]
     plugins["enabled"] = enabled if NAME in enabled else enabled + [NAME]
-    tmp = path.with_name(f".{path.name}.{secrets.token_hex(4)}")
-    tmp.write_text(yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False), encoding="utf-8")
-    tmp.replace(path)
+    write_config(path, cfg)
 
 
 def _context_files_near(cwd: Path) -> list[str]:

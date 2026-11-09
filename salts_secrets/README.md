@@ -90,12 +90,17 @@ them to `plugin-data/salts-secrets/reset-<time>/` and continues.
 
 1. creates the public profile (`<HERMES_HOME>/profiles/public/`) with its own SOUL.md, config.yaml,
    API key and an empty working directory, so no `AGENTS.md` or `.hermes.md` can be picked up;
-2. installs this same plugin there, where it acts as the guest side;
+2. installs this same plugin there, where it acts as the guest side: with `hermes -p public plugins install` from
+   the source and commit your own copy was installed from (a checkout is copied as it is);
 3. turns on `gateway.multiplex_profiles`, so `/p/public/v1` is served by the same gateway, and writes the
    `gateway.profile_routes` above (it replaces only routes named `salts-secrets:*`; yours stay first) and
    the `*_ALLOW_ALL_USERS` switch for each routed platform;
 4. stores the public profile's key in your profile as `SALTS_PUBLIC_API_KEY` through Hermes secrets;
 5. narrows the public toolsets, writes the public projection (empty until you publish) and runs the check.
+
+Config changes go through Hermes' own config writer, so your comments survive. `setup` copies no model settings
+or keys into the public profile: choose the model guests are answered with by running `hermes -p public model`, which
+keeps that profile's credentials in that profile.
 
 Then open the **Salt's Secrets** tab in the Hermes dashboard and tick what strangers may know.
 
@@ -132,15 +137,18 @@ admitted by the bot that received them, which is yours, so `setup` sets `TELEGRA
 `DISCORD_ALLOW_ALL_USERS`; `check` is BROKEN if a platform is open without its catch-all, if a route
 other than yours points at your profile, or if your Telegram route lacks `chat_id`.
 
-**Owner profile** (`pre_gateway_dispatch`, the second line). Only your own DM reaches your agent. Whatever
-the routes still leave in your profile and is not your DM (your own messages in a Discord server, where a
-route cannot tell your DM channel from a server channel; platforms without routes) is withheld and
-answered by the public profile through the local API server under its own session
-(`guest-<platform>-<chat>`). If the public profile cannot answer, the message is dropped with a short
-notice; it never falls through to your agent.
+**Owner profile** (`post_gateway_admission`, the second line). Only your own DM reaches your agent. Whatever
+the routes still leave in your profile, once the gateway has admitted it, and is not your DM (your own messages
+in a Discord server, where a route cannot tell your DM channel from a server channel; an admitted sender on a
+platform without routes) is answered by the public profile through the local API server under its own session
+(`guest-<platform>-<chat>`), and the gateway delivers that reply. Senders your allowlist or pairing rejects never
+reach the hook. If the public profile cannot answer, or not before `plugins.hook_callback_timeout` (default
+30 s) minus 3 s, the sender gets a short notice instead; the message never falls through to your agent.
 
-**Public profile, before the turn** (`pre_gateway_dispatch`). Bots are ignored and each guest gets 20
-messages an hour (`guest_rate_per_hour`); over the limit the guest gets a short notice and no turn.
+**Public profile, before the turn.** Bots are ignored and a guest whose session a failed revoke left behind is
+moved to a fresh one (`pre_gateway_dispatch`, which hands over the session store). After admission
+(`post_gateway_admission`) each guest gets 20 messages an hour (`guest_rate_per_hour`); over the limit, or while
+that guest's session could not be moved, the guest gets a short notice and no turn.
 
 **Public profile, during the turn** (`pre_tool_call`, a system prompt section, one tool). Every platform
 key in `platform_toolsets` (Telegram, Discord, the API server and the rest) is pinned to the guest
@@ -229,7 +237,9 @@ Under `plugins.entries.salts-secrets.settings` in your profile's config.yaml:
   `check` compares the owner's copy with the public profile's `API_SERVER_KEY` through Hermes'
   profile secret scope.
 - **Network.** The owner side calls only the local API server (`127.0.0.1:8642` by default) and, when
-  you click Classify or Draft, your own configured model with the item text.
+  you click Classify or Draft, your own model with the item text, through Hermes' plugin LLM access
+  (`agent.plugin_llm`, what `ctx.llm` hands out): Hermes resolves the provider and its credentials, and the
+  plugin never reads a model key.
   Nothing else leaves the machine except what Hermes itself sends to your model provider.
 - **Files written.** `<HERMES_HOME>/plugin-data/salts-secrets/` in both profiles (allowlist, projection,
   tool tiers, guest archive and digest, the public profile's empty cwd), and the public profile's
@@ -304,9 +314,11 @@ is deleted. The model is scripted: latency is gateway overhead, and cost is show
 
 ## Limits
 
-- **Needs `plugins.isolation: in_process`.** Under the plugin host, `pre_gateway_dispatch` gets a
-  placeholder gateway and cannot reply, so messages on the second-line path are dropped (safe, but
-  nothing is answered), and `hermes salts-secrets` is not wired into the CLI.
+- **Needs `plugins.isolation: in_process`.** The public side's revoke guard moves a guest to a fresh session
+  through the session store `pre_gateway_dispatch` hands over, and under the plugin host
+  `hermes salts-secrets` is not wired into the CLI.
+- **A slow public reply on the second-line path becomes a notice.** The owner hook waits for the public profile
+  only until just before `plugins.hook_callback_timeout`; natively routed guests are not affected.
 - **Native routes cover Telegram and Discord.** Other platforms (Slack ids are case-sensitive, and
   `--owner` lower-cases them) stay on the second-line path.
 - One public profile serves all guests. Guests are isolated from you and from each other's history, but
@@ -343,7 +355,11 @@ planned.
 ```
 salts_secrets/            the plugin (catalog subdir)
   routes.py               the gateway.profile_routes setup writes and check audits
-  route.py                pre_gateway_dispatch: guest rate limit (public), second-line routing (owner)
+  route.py                gateway hooks: stale-session move and guest rate limit (public), second-line
+                          routing after admission (owner); in-flight revoke check
+  receipts.py             public side: one receipt per tool call (tool, public notes read, projection version)
+  notes.py                notes from chat: salt_propose_public and /salt approve
+  readonly.py             owner side: no tools in read-only demo sessions (salt-v-*)
   gate.py                 public side: tool allowlist, fail-closed
   public_context.py       public side: prompt section and public_notes_lookup
   context.py              scan context sources, approvals, projection, publish (revocation)

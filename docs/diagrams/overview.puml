@@ -22,7 +22,7 @@ rectangle "One Hermes · one gateway · one process · one API key" #FAFAF5 {
   rectangle "profile_routes\n--\nHermes' own routing\nyour user id -> owner\neveryone else -> public" as routes #EDEDED
   rectangle "Owner profile" #FFF3E0 {
     rectangle "Your agent\n--\nSOUL · MEMORY · USER\nworkspace · skills · sessions\nevery tool" as oagent #FFD9A0
-    rectangle "Owner hook\n--\npre_gateway_dispatch\nnot your DM? withhold" as ohook #FFD9A0
+    rectangle "Owner hook\n--\npost_gateway_admission\nnot your DM? the public\nprofile answers" as ohook #FFD9A0
     rectangle "Context page\n--\nrules then model: A / B / C\none owner click per item" as board #FFD9A0
     database "approvals.jsonl\nevery click" as log #FFE9C7
   }

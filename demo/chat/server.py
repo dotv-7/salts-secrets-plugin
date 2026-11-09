@@ -53,6 +53,8 @@ class Settings:
         self.viewer_hint = e.get("SALT_VIEWER_PASSPHRASE_SHOWN", "")
         self.secret = (e.get("SALT_SECRET") or secrets.token_hex(32)).encode()
         self.owner_home = Path(e.get("SALT_OWNER_HOME", str(Path.home() / ".hermes")))
+        # Draft and Classify call the owner's model through Hermes, which resolves it from this home.
+        os.environ.setdefault("HERMES_HOME", str(self.owner_home))
         self.public_home = Path(e.get("SALT_PUBLIC_HOME", str(self.owner_home / "profiles" / self.public_profile)))
         roots = e.get("SALT_WORKSPACE_ROOTS", "")
         self.workspace_roots = [Path(p) for p in roots.split(os.pathsep) if p]
@@ -459,7 +461,7 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         force = bool(body.get("force"))
         if force and not is_owner(st):
             raise HTTPException(403, "read-only mode")
-        ask = None if body.get("rules_only") else classify.openai_asker(classify.model_settings(s.owner_home))
+        ask = None if body.get("rules_only") else classify.host_asker()
         return await classify.classify(s.owner_home, board_scan(), ask, force)
 
     @app.get("/api/board/guests")
@@ -537,16 +539,6 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         except (OSError, ValueError):
             return {}
 
-    def _model_cfg() -> dict:
-        """Hermes' own model settings from the owner profile (same model that serves her sessions)."""
-        try:
-            cfg = yaml.safe_load((s.owner_home / "config.yaml").read_text(encoding="utf-8")) or {}
-        except (OSError, ValueError):
-            cfg = {}
-        m = cfg.get("model") if isinstance(cfg.get("model"), dict) else {}
-        return {"base_url": str(m.get("base_url") or "").rstrip("/"), "api_key": str(m.get("api_key") or ""),
-                "model": str(m.get("default") or ""), "api_mode": str(m.get("api_mode") or "")}
-
     @app.post("/api/board/draft")
     async def board_draft(request: Request):
         require_json(request)
@@ -560,35 +552,15 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         hit = store.get(item_id)
         if hit and hit.get("fingerprint") == it.fingerprint and not force:
             return {"draft": hit["draft"], "cached": True, "tokens": hit.get("tokens", 0)}
-        m = _model_cfg()
-        if not (m["base_url"] and m["api_key"] and m["model"]):
-            raise HTTPException(503, "no model configured in the owner profile")
-        # Reasoning models can spend the whole budget thinking and return nothing; DeepSeek honours
-        # "thinking: disabled", other providers ignore the field.
-        payload = {"model": m["model"], "temperature": 0.2, "max_tokens": 2000 if it.kind == "skill" else 800, "stream": False,
-                   "thinking": {"type": "disabled"},
-                   "messages": [{"role": "system", "content": _draft_system(it.kind)},
-                                {"role": "user", "content": f"Source: {it.group} › {it.title}\n\n{'Skill' if it.kind == 'skill' else 'Note'}:\n{it.text[:12000]}"}]}
+        user = f"Source: {it.group} › {it.title}\n\n{'Skill' if it.kind == 'skill' else 'Note'}:\n{it.text[:12000]}"
         try:
-            async with httpx.AsyncClient(timeout=90) as client:
-                if m["api_mode"] == "anthropic_messages":
-                    payload["system"] = payload["messages"].pop(0)["content"]
-                    r = await client.post(f"{m['base_url']}/v1/messages", json=payload,
-                                          headers={"x-api-key": m["api_key"], "anthropic-version": "2023-06-01"})
-                else:
-                    r = await client.post(f"{m['base_url']}/chat/completions", json=payload,
-                                          headers={"Authorization": f"Bearer {m['api_key']}"})
-                r.raise_for_status()
-                j = r.json()
-        except (httpx.HTTPError, ValueError) as exc:
+            result = await classify.host_llm().acomplete(
+                messages=[{"role": "system", "content": _draft_system(it.kind)}, {"role": "user", "content": user}],
+                temperature=0.2, max_tokens=2000 if it.kind == "skill" else 800, purpose="salts-secrets.draft",
+            )
+        except Exception as exc:  # noqa: BLE001 - provider and trust errors alike become one HTTP answer
             raise HTTPException(502, f"model call failed: {type(exc).__name__}")
-        if "content" in j and "choices" not in j:
-            draft = "".join(b.get("text", "") for b in j.get("content") or [] if b.get("type") == "text").strip()
-            usage = j.get("usage") or {}
-            tokens = int(usage.get("input_tokens") or 0) + int(usage.get("output_tokens") or 0)
-        else:
-            draft = str(((j.get("choices") or [{}])[0].get("message") or {}).get("content") or "").strip()
-            tokens = int((j.get("usage") or {}).get("total_tokens") or 0)
+        draft, tokens = (result.text or "").strip(), int(result.usage.total_tokens or 0)
         if not draft:
             raise HTTPException(502, "model returned an empty draft (reasoning used up the budget?); not cached")
         store[item_id] = {"fingerprint": it.fingerprint, "draft": draft, "tokens": tokens, "at": int(time.time())}

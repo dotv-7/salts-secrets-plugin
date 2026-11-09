@@ -12,7 +12,6 @@ import json
 import secrets
 import time
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any, Callable, Optional
 
 from . import context, privacy
@@ -116,7 +115,7 @@ def make_command(owners: set[str], home_fn: Callable[[], Path] = current):
     from .route import is_owner_dm
 
     def command(raw_args: str = "", source: Any = None, session_id: str = "", **_: Any) -> str:
-        if str(session_id or "").startswith(VIEWER_PREFIX) or not is_owner_dm(SimpleNamespace(source=source), owners):
+        if str(session_id or "").startswith(VIEWER_PREFIX) or not is_owner_dm(source, owners):
             return "Only the owner, in their own DM, can approve notes for guests."
         home = home_fn()
         sub, _, arg = str(raw_args or "").strip().partition(" ")
