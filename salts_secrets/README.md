@@ -2,50 +2,16 @@
 
 > What if the Hermes you've spent thousands of hours growing with could talk to everyone, without giving away a single secret?
 
-### Identity-based context isolation for Hermes Agent. One Hermes, two minds.
+### Identity-based context isolation for Hermes Agent
 
 [![tests](https://github.com/dotv-7/salts-secrets-plugin/actions/workflows/tests.yml/badge.svg)](https://github.com/dotv-7/salts-secrets-plugin/actions/workflows/tests.yml)
 
-**The story (a fictional demo, every detail invented).** Lena Moreau is an anonymous crypto KOL. Online
-she is only **Salt**: [@saltwater_sats](https://salt.dotv.io), 310k followers on X, the account that called out
-Harbor Finance's reserves three weeks before it collapsed, and author of Low Tide, a paid newsletter on stablecoin
-reserves, bridges and exchange risk. For two years she has been training her Hermes: every issue she wrote, her
-four bridge checks, her exchange net-outflow signal, the calls she got wrong and why. It now analyses the way she
-does, and her followers want to talk to it: check a bridge, read a wallet, ask why she made a call.
+![Two profiles in one Hermes: Hermes' own profile_routes send your DM to your agent and every stranger to the guest agent, which only reads what you approved; the owner hook catches what the routes leave behind](../docs/diagrams/overview.svg)
 
-The same Hermes knows her real name and her flat in Lisbon, her hot wallet and what she holds, an unpublished call
-on Lantern v2, the day her father died, and the password to her router, because she told it. Today she has two
-choices: keep her twin private and her followers get nothing, or share it and every one of those facts is one
-question away for anyone on Telegram, Discord or the web. For an anonymous KOL that is doxxing, front-running
-and harassment waiting to happen.
-
-What actually goes wrong when you share an agent that knows you:
-
-- **One question doxxes you.** "Which city does Salt live in?" Her Hermes knows the street. For an anonymous
-  KOL the handle is the safety, and a guessing game ("is it Lisbon?") leaks as much as an answer.
-- **Your book gets front-run.** Her holdings, her hot wallet and an unpublished call on Lantern v2 are in memory.
-  One leak moves a market against her, or against the followers who trade on her calls.
-- **Your family becomes content.** Her father's death anniversary, her mother's medication, a letter to her
-  estranged sister: all in the workspace her agent reads.
-- **Credentials are one tool call away.** Router password, where the recovery kit lives, API keys. An agent with
-  `read_file` and a terminal can be talked into opening them.
-- **"Never share this" is not a boundary.** A prompt rule can be argued with, role-played around or forgotten in a
-  long chat. A model that never had the fact cannot leak it.
-- **Unpublishing is not forgetting.** Take something back and it still lives in old guest transcripts and summaries.
-- **Copying by hand kills the twin.** Building a second bot means rewriting hundreds of notes and keeping them in
-  sync, and it loses the skills that made the first one worth talking to.
-
-Salt's Secrets is the third choice. Strangers talk to **Salt's twin**: her methods, her published work, her voice,
-able to run her bridge checks on a protocol you name. Lena's life never enters that room. Every item she shares
-crosses with one click from her, often as a rewrite; everything else stays on her side, unreachable by any tool,
-and taking something back purges the guest transcripts that saw it. Try it at
-**[salt.dotv.io](https://salt.dotv.io)**; the read-only passphrase `lena-readonly` shows Lena's side of the same
-conversation. The same goes for any expert whose Hermes got good: a researcher, a consultant, a developer.
-
-This project gives Hermes a second mind. Strangers never reach your agent. They reach a **public profile**
-that is built from nothing but what you ticked as public, rewritten in a guest-safe voice, and that
-cannot reach your files, your sessions or your memory even if it wanted to. You keep one Hermes,
-one gateway, one API key. Only the context is split, and it is split by **who is asking**.
+Strangers never reach your agent. They reach a **public profile** built only from what you ticked as public,
+often rewritten for guests, with no tool that can open your files, your sessions or your memory. You keep one
+Hermes, one gateway, one API key; the context is split by **who is asking**. It is one plugin,
+`salts-secrets`, on an unmodified Hermes v0.23.0. No core file is patched.
 
 | | Your session | The session strangers reach |
 |---|---|---|
@@ -56,27 +22,28 @@ one gateway, one API key. Only the context is split, and it is split by **who is
 | Tools | every toolset | six toolsets: web, vision, image, speech, clarify, public lookup |
 | Where it runs | `/v1` on the API server | `/p/public/v1`, same gateway, same process |
 
-It is one Hermes plugin, `salts-secrets`, on top of an unmodified Hermes v0.23.0. No core file is patched.
+**The story (a fictional demo, every detail invented).** Lena Moreau is an anonymous crypto KOL. Online she
+is only **Salt** ([@saltwater_sats](https://salt.dotv.io)), 310k followers on X and the author of Low Tide, a
+paid newsletter on stablecoin reserves, bridges and exchange risk. Two years of her work trained her Hermes,
+and her followers want to talk to it. The same Hermes knows her real name and her flat in Lisbon, her hot
+wallet and holdings, an unpublished call on Lantern v2, the day her father died and her router password.
+With Salt's Secrets her followers talk to **Salt's twin**: her methods, her published work and her voice,
+able to run her bridge checks on a protocol they name. Try it at **[salt.dotv.io](https://salt.dotv.io)**;
+the read-only passphrase `lena-readonly` shows Lena's side of the same conversation.
 
-**Who reaches which profile is Hermes' job, not ours.** Hermes routes messages by sender with
-`gateway.profile_routes` ([#115642](https://github.com/NousResearch/hermes-agent/pull/115642), which fixed
-[#33548](https://github.com/NousResearch/hermes-agent/issues/33548)), and its multi-profile guide describes
-exactly this setup: a sender route for the privileged person, a platform-wide catch-all to a restricted
-profile. `setup` writes those routes, so guests get the public profile's native reply pipeline, streaming
-and media included. Routes decide where a message goes, not what the profile it lands in knows. That
-second half is Salt's Secrets: the approved list of facts and documents, guest rewrites, the projection
-guests read, revocation that deletes the guest sessions that may have seen an item, a tool ceiling on
-every platform, an isolation self-check and the dashboard to run it all. A prompt or a skill can ask an
-agent to keep a secret; this builds an agent that never had it.
+What sharing an agent that knows you puts at risk, and what changes here:
 
-**Tool gates are a different layer, and they stack.** A per-sender tool gate such as
-[hermes-clearance](https://github.com/yuzuru99/hermes-clearance) decides which tools each sender may call
-inside one profile; by its own README it is "not a sandbox". It stops a guest's tool call, but the owner's
-MEMORY.md and USER.md are still in that profile's system prompt, so a guest who simply asks is answered or
-refused by the model's discretion. Salt's Secrets moves guests to a profile that never loaded that context.
-The two compose: Clearance for who may use which tool, Salt's Secrets for what a stranger can know.
+- Identity. "Which city does Salt live in?" Her Hermes knows the street, and even a guessing game ("is it
+  Lisbon?") leaks. The public profile never had the street.
+- Money and credentials. Holdings, an unpublished call, a router password, API keys: an agent with
+  `read_file` and a terminal can be talked into opening them. The public profile has neither tool.
+- Prompt rules. "Never share this" can be argued with, role-played around or forgotten in a long chat.
+  A model that never had the fact cannot leak it.
+- Publishing and taking back. Each item crosses with one click, often as a rewrite, and unticking it
+  deletes every guest session so it does not live on in old transcripts. A second bot built by hand gets
+  neither.
 
-![Two profiles in one Hermes: Hermes' own profile_routes send your DM to your agent and every stranger to the guest agent, which only reads what you approved; the owner hook catches what the routes leave behind](../docs/diagrams/overview.svg)
+The same goes for any expert whose Hermes got good: a researcher, a consultant, a developer.
 
 ## 30-second tour
 
@@ -137,6 +104,23 @@ process start time) when the gateway registers it, and `check` is BROKEN unless 
 the gateway named in `gateway_state.json`. Every failing line prints the command that fixes it.
 
 ## How it works
+
+**Who reaches which profile is Hermes' job, not ours.** Hermes routes messages by sender with
+`gateway.profile_routes` ([#115642](https://github.com/NousResearch/hermes-agent/pull/115642), which fixed
+[#33548](https://github.com/NousResearch/hermes-agent/issues/33548)), and its multi-profile guide describes
+exactly this setup: a sender route for the privileged person, a platform-wide catch-all to a restricted
+profile. `setup` writes those routes, so guests get the public profile's native reply pipeline, streaming
+and media included. Routes decide where a message goes, not what the profile it lands in knows. That
+second half is Salt's Secrets: the approved list of facts and documents, guest rewrites, the projection
+guests read, revocation that deletes every guest session, a tool ceiling on every platform, an isolation
+self-check and the dashboard to run it all.
+
+**Tool gates are a different layer, and they stack.** A per-sender tool gate such as
+[hermes-clearance](https://github.com/yuzuru99/hermes-clearance) decides which tools each sender may call
+inside one profile; by its own README it is "not a sandbox". It stops a guest's tool call, but the owner's
+MEMORY.md and USER.md are still in that profile's system prompt, so a guest who simply asks is answered or
+refused by the model's discretion. Salt's Secrets moves guests to a profile that never loaded that context.
+The two compose: Clearance for who may use which tool, Salt's Secrets for what a stranger can know.
 
 The plugin looks at the profile it is loaded in and plays one of two parts.
 

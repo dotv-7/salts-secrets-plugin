@@ -1,8 +1,8 @@
 @startuml
 !pragma layout smetana
 skinparam handwritten true
-skinparam defaultFontName Dekko
-skinparam defaultFontSize 15
+skinparam defaultFontName "Patrick Hand"
+skinparam defaultFontSize 16
 skinparam shadowing true
 skinparam backgroundColor white
 skinparam ArrowColor #333333
@@ -39,7 +39,7 @@ rectangle "One Hermes · one gateway · one process · one API key" #FAFAF5 {
 you --> routes
 guest --> routes
 routes --> oagent : your DM
-routes --> ghook : everyone else
+routes --> ghook
 routes ..> ohook : left in your profile\n(Discord server,\nunrouted platform)
 ohook ..> pagent : /p/public/v1
 ghook --> pagent

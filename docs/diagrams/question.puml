@@ -1,7 +1,7 @@
 @startuml
 skinparam handwritten true
-skinparam defaultFontName Dekko
-skinparam defaultFontSize 15
+skinparam defaultFontName "Patrick Hand"
+skinparam defaultFontSize 16
 skinparam shadowing true
 skinparam backgroundColor white
 skinparam sequence {
