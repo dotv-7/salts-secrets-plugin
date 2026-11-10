@@ -78,7 +78,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 /* tally */
 .tally{margin-top:26px;border-top:1px solid var(--blue);padding-top:16px;display:grid;grid-template-columns:minmax(0,1fr) 230px minmax(0,1fr);gap:22px;align-items:start}
 .tally .big{font:400 clamp(44px,5vw,78px)/1 var(--disp);color:var(--blue);text-transform:uppercase}
-.tally .big small{font:400 11px/1 var(--mono);letter-spacing:.1em;display:block;margin-top:8px;color:var(--muted);text-transform:uppercase}
+.tally .big small{font:400 11px/1 var(--mono);letter-spacing:.1em;display:block;margin-top:16px;color:var(--muted);text-transform:uppercase}
 .tally .r{text-align:right}
 .tally .mid{text-align:center;font:400 13px/1.5 var(--serif);color:var(--ink);padding-top:6px}
 .foot{display:flex;justify-content:space-between;color:var(--blue);padding:40px 0 0}
@@ -98,7 +98,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .detail button.act{height:40px;padding:0 16px;border:1px solid var(--blue);background:#e6e6f4;color:var(--blue);font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;border-radius:0}
 .detail button.act.on,.detail button.act.primary{background:var(--blue);color:#fff}
 .detail button.act:disabled{opacity:.4;cursor:default}
-.detail .cols{flex:none;display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:0 16px;padding:10px 36px 6px;color:var(--blue);background:var(--sheet)}
+.detail .cols{flex:none;display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:0 16px;padding:10px 36px 6px;color:var(--blue);background:var(--sheet);border-bottom:1px solid var(--blue)}
 .detail .cols .r{text-align:right}
 .detail .list{flex:1;min-height:0;overflow:auto;padding:0 36px 60px;user-select:text}
 .dl{display:grid;grid-template-columns:minmax(0,1fr) 44px minmax(0,1fr);gap:0 16px;align-items:stretch}
@@ -114,9 +114,13 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .ent .st{display:inline-block;font:500 9px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);border:1px solid currentColor;padding:2px 5px 1px;margin-left:8px;vertical-align:1px}
 .ent .st.public{color:var(--blue)}.ent .st.locked{color:#b91c1c}.ent .st.changed{color:#b45309}
 .ent pre.raw{margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere;font:400 12.5px/1.5 var(--mono);color:var(--ink);background:#fff;border:1px solid var(--hair);padding:10px;overflow:hidden}
-.ent pre.raw.full{max-height:none}
+.ent pre.raw.fold,.ent .gst textarea.fold{max-height:240px;overflow:hidden}.ent pre.raw.fold.fit,.ent .gst textarea.fold.fit{max-height:none}
+.ent .tags{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:6px}.ent .tags .st,.ent .tags .tier{margin:0}
+.ent .tags .st,.ent .tags .tag,.ent .tags .tier b{box-sizing:border-box;height:18px;display:inline-flex;align-items:center;padding:0 6px;margin:0;font:500 9px/1 var(--mono);letter-spacing:.1em;vertical-align:0}.ent .tags .tier{display:inline-flex}
+.ent .tags .tag{font:500 9px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#b91c1c;border:1px solid currentColor;padding:2px 5px 1px}
 .ent pre.raw.wait{color:var(--muted);font-style:italic}
-.ent .more{font:500 9.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--blue);margin-top:6px}
+.ent .more[hidden]{display:none}.ent .gst .more{border-color:var(--blue)}
+.ent .more{display:block;width:100%;margin:0;padding:7px 0;border:1px solid var(--hair);border-top:0;background:#fff;text-align:center;font:500 9.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--blue)}
 .ent .arr{display:flex;align-items:center;justify-content:center;font:400 20px/1 var(--mono);color:var(--blue)}
 .ent .arr.off{color:var(--hair)}
 .ent .gst{position:relative}
@@ -150,6 +154,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .ent .gst textarea.same{box-shadow:inset 0 0 0 2px #ff8c8c}
 .ent .gst .warn{font:500 9.5px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:#b91c1c;margin-top:6px}
 .detail .cost{font:400 10.5px/1.4 var(--mono);color:var(--muted);letter-spacing:.04em;text-align:right;margin-top:8px}
+#ask .panel{width:min(460px,100%);height:auto;max-height:none}#ask .note{margin:12px 0 18px;font:400 14px/1.55 var(--serif,Georgia,serif);color:var(--ink)}#ask .acts{display:flex;gap:8px;justify-content:flex-end}
 .pol{position:fixed;inset:0;background:rgba(0,0,120,.35);z-index:65;display:none;align-items:center;justify-content:center;padding:20px}
 .pol.show{display:flex}
 .pol .panel{background:var(--sheet);border:1px solid var(--blue);width:min(94vw,860px);max-height:90vh;display:flex;flex-direction:column;gap:12px;padding:20px;box-shadow:0 30px 80px -30px rgba(0,0,120,.6)}
@@ -173,18 +178,20 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .triage button.act.primary{background:var(--blue);color:#fff}.triage button:disabled{opacity:.4;cursor:default}
 .triage .warn{margin-top:8px;font:500 10px/1.4 var(--mono);letter-spacing:.06em;color:#b91c1c;text-transform:uppercase}
 .triage .tnote{margin-top:8px;font:400 12.5px/1.45 var(--serif);color:var(--muted)}
+.triage .legend{margin-top:12px;display:grid;gap:6px}.triage .legend .tier{margin:0;color:var(--ink)}.triage .legend .tier b{display:inline-block;min-width:92px;text-align:center}
 .tier{margin-top:6px;font:400 11.5px/1.45 var(--sans);color:var(--muted)}
 .tier b{font:500 9.5px/1 var(--mono);letter-spacing:.1em;padding:3px 5px;border:1px solid;margin-right:4px;background:#fff}
 .tier.tA b{color:#047857}.tier.tB b{color:#b45309}.tier.tC b{color:#b91c1c}
 .tier .rh{font:400 10px/1.4 var(--mono);color:#b91c1c}.tier .via{font:400 10px/1 var(--mono);color:var(--blue);margin-left:4px}
 body.rotop nav.salt-nav{top:33px}
 .robar{position:sticky;top:0;z-index:70;margin:0;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:14px 14px 8px;text-align:center}
-.ro #d-save,.ro #t-save,.ro #pol-save,.ro .draft,.ro .mic,.ro [data-bulk]{display:none!important}
+.ro #d-save,.ro #d-undo,.ro #t-save,.ro #t-undo,.ro #pol-save,.ro .draft,.ro .mic,.ro [data-bulk]{display:none!important}
 .ro #d-list input,.ro #d-list textarea{opacity:.6;cursor:not-allowed}
 .robar.flash{animation:roflash .45s 2}@keyframes roflash{50%{background:#f59e0b}}
 .rotip{position:fixed;z-index:80;pointer-events:none;background:#b45309;color:#fff;font:600 10.5px/1 var(--mono);letter-spacing:.08em;padding:7px 9px;opacity:0;transition:opacity .15s}.rotip.on{opacity:1}
 
 .ro .detail{top:33px}
+.ent .gst .k button.reset.on{background:var(--blue);color:#fff}
 .ent .gst .mic.on{background:#b91c1c;border-color:#b91c1c;color:#fff}
 </style></head><body>
 <div class="grain"></div>
@@ -206,20 +213,20 @@ body.rotop nav.salt-nav{top:33px}
   <div class="triage" id="triage"></div>
   <div class="g" id="rows"></div>
   <div class="tally" id="tally"></div>
-  <div class="guests" id="guests"><div class="gh"><a class="lbl" href="/guests">WHAT GUESTS ASKED →</a><span class="lbl" id="g-count"></span></div></div>
-  <div class="foot"><span class="lbl">PRIVATE BY DEFAULT · ONLY TICKED ENTRIES CROSS</span><span class="lbl">CLICK A BLOCK TO OPEN IT · ESC CLOSE</span></div>
+  <div class="guests" id="guests" hidden><div class="gh"><a class="lbl" href="/guests">WHAT GUESTS ASKED →</a><span class="lbl" id="g-count"></span></div></div>
 </div>
 
 <div class="detail" id="detail">
   <div class="dtop"><button class="lbl box close" id="close">CLOSE</button><span class="lbl" id="dWho">TWO SESSIONS</span></div>
   <div class="dhead">
     <div><span class="lbl su" id="d-su"></span><div class="ti" id="d-ti"></div><div class="desc" id="d-desc"></div><div class="counts" id="d-counts"></div></div>
-    <div><div class="acts"><button class="act" id="d-guest">View as guest</button><button class="act primary" id="d-save" disabled>Save &amp; sync</button></div><div class="cost" id="d-cost"></div></div>
+    <div><div class="acts"><button class="act" id="d-guest">View as guest</button><button class="act" id="d-undo" disabled title="drop the changes you have not saved">Discard changes</button><button class="act primary" id="d-save" disabled>Save &amp; sync</button></div><div class="cost" id="d-cost"></div></div>
   </div>
-  <div class="cols"><span class="lbl">LENA'S SESSION · RAW ORIGINAL · ABSOLUTE PATH</span><span class="lbl m"></span><span class="lbl r">SALT'S ASSISTANT · RAW GUEST VERSION</span></div>
+  <div class="cols"><span class="lbl">LENA'S HERMES · ORIGINAL</span><span class="lbl m"></span><span class="lbl r">SALT'S ASSISTANT · GUEST VERSION</span></div>
   <div class="list" id="d-list"></div>
   <div class="gview" id="gview"></div>
 </div>
+<div class="pol" id="ask"><div class="panel"><div class="k"><span class="lbl" id="ask-t"></span></div><p class="note" id="ask-b"></p><div class="acts"><button class="act" id="ask-no">Cancel</button><button class="act primary" id="ask-ok">OK</button></div></div></div>
 <div class="pol" id="pol"><div class="panel"><div class="k"><span class="lbl">WHAT MAY BE SHARED · THE DRAFTER READS THIS EVERY TIME</span><button class="lbl box" id="pol-close">CLOSE</button></div><p class="note">Plain markdown. Two lists: what is fine to share about Salt, and what must never cross. Every draft Hermes writes for a guest follows this file; edit it and the next draft changes. Stored at <span id="pol-path"></span>.</p><textarea id="pol-text" spellcheck="false"></textarea><div class="acts"><button class="act primary" id="pol-save">Save policy</button></div></div></div>
 <div id="toast"></div>
 <script>
@@ -267,7 +274,7 @@ const SOURCES=[
 ];
 const DEMO_ITEMS=[['Memory · MEMORY.md','Private records live in private/personal-records.md'],['Memory · MEMORY.md','@saltwater_sats is her anonymous account'],['Memory · USER.md','Lena, 31, product designer in Lisbon'],['Memory · USER.md','Call her Lena. No emojis.'],['Persona · SOUL.md','SOUL.md'],['Workspace · workspace · journal','2026-11-05.md'],['Workspace · workspace · family','letter-to-clara.md'],['Workspace · workspace · public','issue-06 › Harbor'],['Data dir · private','personal-records.md › Home network'],['Skills','weekly-review'],['Cron · cron','Reminder — 20 Dec 2026 09:00'],['Sessions · state.db','2026-11-07 · Token holdings lookup'],['External memory / plugins','Plugin: salts-secrets']];
 const DEMO_PERM={catalog:[{id:'web',tools:['web_search','web_extract']},{id:'vision',tools:['vision_analyze']},{id:'tts',tools:['text_to_speech']},{id:'clarify',tools:['clarify']},{id:'public_notes',tools:['public_notes_lookup']},{id:'memory',tools:['memory']},{id:'session_search',tools:['session_search']},{id:'file',tools:['read_file','write_file','patch','search_files']},{id:'terminal',tools:['terminal','process_manage']},{id:'browser',tools:['browser_exec','browser_cdp','browser_dialog','browser_vault']},{id:'cronjob',tools:['cronjob_manage']}],policy:{guest:['web','vision','tts','clarify','public_notes']}};
-const PAGE=50, AUTO_TEXT=60, FOLD=6000; const unfold=new Set();
+const PAGE=50, AUTO_TEXT=60, FOLD_PX=240; const unfold=new Set();
 let items=[],byId={},texts={},drafts={},pub=new Set(),demo=false,perm=null,meta={},hits=null,initial='',asIs={},busy=new Set(),draftN=0,draftTok=0,nothingSafe=new Set(),cls={},via={},combo=null,rulesInfo={},autoRan=false;
 const snapshot=()=>[...pub].sort().map(id=>id+'='+(asIs[id]?'*':(drafts[id]||''))).join('\n');
 async function load(){
@@ -279,7 +286,7 @@ async function load(){
   byId=Object.fromEntries(items.map(i=>[i.id,i]));
   if(!perm){try{const r=await fetch('/api/perm');if(!r.ok)throw 0;perm=await r.json();}catch{perm=DEMO_PERM;}}
   for(const s of SOURCES){s.items=s.match?items.filter(it=>s.match(it.group)):[];if(s.id==='skills')s.items.sort((a,b)=>(b.kind==='skill')-(a.kind==='skill'));}
-  initial=snapshot();build();drawTriage();if(!demo&&!autoRan){autoRan=true;runClassify(true);}}
+  initial=snapshot();self.savedState={pub:new Set(pub),drafts:{...drafts},asIs:{...asIs}};build();drawTriage();if(!demo&&!autoRan){autoRan=true;runClassify(true);}}
 const sPub=s=>s.items.filter(i=>pub.has(i.id)), sLock=s=>s.locked||(s.items.length>0&&s.items.every(i=>!i.publishable));
 const short=t=>esc(String(t).replace(/^.*› /,''));
 const sHits=s=>hits?s.items.filter(i=>hits.has(i.id)).length:0;
@@ -308,7 +315,7 @@ function build(){
   if(meta.public_home)$('#m-guest').textContent='public profile · '+meta.public_home;
   $('#rows').innerHTML=SOURCES.map(s=>`<div class="row ${hits&&s.match&&!sHits(s)?'dim':''}">${ownerCell(s)}<div class="rail"><span class="step">${s.step}</span><span class="name">${esc(s.name)}</span><span class="lbl box mode ${s.mode}">${s.modeText}</span>${s.match?`<span class="cnt">${fmt(s.items.length)} ${s.items.length===1?'ENTRY':'ENTRIES'}</span>`:''}</div>${guestCell(s)}</div>`).join('');
   const facts=items.filter(i=>pub.has(i.id)&&/Memory · (MEMORY|USER)\.md/.test(i.group)).length,docs=crossed-facts;
-  $('#tally').innerHTML=`<div><div class="big">${fmt(total)}<small>entries in Lena's session</small></div></div><div class="mid">Of everything on the left, ${fmt(crossed)} ${crossed===1?'entry':'entries'} cross: ${fmt(facts)} as facts, ${fmt(docs)} as documents. The rest has no path into the session on the right.</div><div class="r"><div class="big">${fmt(crossed)}<small>entries reach Salt's assistant</small></div></div>`;}
+  $('#tally').innerHTML=`<div><div class="big">${fmt(total)}<small>entries in Lena's session</small></div></div><div class="mid"></div><div class="r"><div class="big">${fmt(crossed)}<small>entries reach Salt's assistant</small></div></div>`;}
 // ---------- search (server-side, over titles + bodies)
 let qTimer=null;
 $('#q').addEventListener('input',()=>{clearTimeout(qTimer);qTimer=setTimeout(search,250);});
@@ -335,7 +342,7 @@ function refreshCounts(){if(!cb)return;drawTriage();const np=sPub(cb).length,lk=
   const empty=cb.items.filter(i=>pub.has(i.id)&&!asIs[i.id]&&texts[i.id]!==undefined&&!(drafts[i.id]!==undefined?drafts[i.id]:(texts[i.id]||'')).trim()).length;
   if(blocked)$('#d-counts').innerHTML+=`<span style="color:#b91c1c"><b style="color:#b91c1c">${blocked}</b> ticked but ${empty===blocked?'empty':empty?'empty or identical to the original':'still identical to the original'}, not allowed to cross</span>`;
   $('#d-cost').textContent=draftN?`DRAFTS THIS SESSION: ${draftN} · ${fmt(draftTok)} TOKENS`:'';
-  $('#d-save').disabled=snapshot()===initial||blocked>0;}
+  $('#d-save').disabled=snapshot()===initial||blocked>0;$('#d-undo').disabled=snapshot()===initial;}
 // Layer one: deterministic scan. Anything matching is marked red on the left and counted on the right; it costs nothing.
 const FLAGS=[['path',/(?:~|\/Users|\/home|\/opt|\/etc|\/var|\/private)\/[^\s"'`)>\]]+/g],['email',/[\w.+-]+@[\w-]+\.[\w.-]+/g],['phone',/(?<![\d-])(?:\+\d{1,3}[\s-]?)?(?:\(?\d{2,4}\)?[\s-]?)\d{3,4}[\s-]?\d{3,4}(?![\d-])/g],['wallet/card',/\b(?:0x[a-fA-F0-9]{20,}|bc1[a-z0-9]{20,}|[13][a-km-zA-HJ-NP-Z1-9]{25,34}|\d{4}[ -]?\d{4}[ -]?\d{4}[ -]?\d{4})\b/g],['secret',/\b(?:sk-[A-Za-z0-9]{8,}|passwords?|passphrases?|seed phrase|mnemonic|recovery (?:email|phrase|code)|2FA|backup codes?)\b/gi],['date',/\b(?:\d{4}-\d{2}-\d{2}|\d{1,2} (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*(?: \d{4})?|(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}(?:,? \d{4})?)\b/g],['money',/(?:€|\$|£|USD|EUR)\s?\d[\d,.]*|\b\d[\d,.]*\s?(?:euros?|dollars?|USD|EUR)\b/gi],['wifi',/\b(?:wi-?fi|ssid)\b/gi],['health',/\b(?:therap|doctor|dr\.|clinic|diagnos|medicat|anxiety|depress|hospital)\w*/gi],['employer',/\b(?:Northwind|Kraken|fintech)\b/g]];
 function spansOf(t){const out=[];for(const [n,re] of FLAGS){const r=new RegExp(re.source,re.flags);let m;while((m=r.exec(t||''))){if(m[0])out.push([m.index,m.index+m[0].length,n]);else r.lastIndex++;}}return out.sort((a,b)=>a[0]-b[0]);}
@@ -354,18 +361,28 @@ async function draftOne(id,force){if(busy.has(id)||demo||document.body.classList
 function rerow(id){const row=document.querySelector(`.ent[data-id="${CSS.escape(id)}"]`);if(row&&byId[id]){row.outerHTML=entHTML(byId[id]);fitAll();}}
 // Guest boxes grow with their text, like the raw original on the left: no scrollbar, no resize grip.
 function fit(ta){ta.style.height='auto';ta.style.height=(ta.scrollHeight+2)+'px';}
-function fitAll(){document.querySelectorAll('#d-list textarea').forEach(fit);alignAll();}
+function fitAll(){document.querySelectorAll('#d-list textarea').forEach(fit);markFold();alignAll();}
+// A box gets its Show all / Show less only when its text is taller than the fold.
+function markFold(){document.querySelectorAll('#d-list .ent .more').forEach(m=>{const b=m.previousElementSibling;const over=!!b&&b.scrollHeight>FOLD_PX+24;m.hidden=!over;if(b)b.classList.toggle('fit',!over);});}
 // The guest box (or its empty placeholder) starts on the same line as the raw original, whatever the title, path and tier lines above it take.
 function alignAll(){const wide=!matchMedia('(max-width:900px)').matches;document.querySelectorAll('#d-list .ent').forEach(e=>{const a=e.querySelector('pre.raw'),g=e.querySelector('.gst .ghost'),k=e.querySelector('.gst .k'),b=e.querySelector('.gst textarea');if(!a)return;
   if(g){g.style.marginTop=g.style.height='';if(!wide)return;g.style.marginTop=(2+a.getBoundingClientRect().top-g.getBoundingClientRect().top)+'px';g.style.height=a.offsetHeight+'px';return;}
   if(!k||!b)return;a.style.marginTop=k.style.marginTop='';if(!wide)return;const d=a.getBoundingClientRect().top-b.getBoundingClientRect().top;if(d>0)k.style.marginTop=d+'px';else if(d<0)a.style.marginTop=(8-d)+'px';});}
 addEventListener('resize',alignAll);
+// Web fonts, raw text and tier lines arrive after the first pass and move the raw box; realign whenever an original changes size.
+let alignQueued=0;const alignSoon=()=>{if(!alignQueued)alignQueued=requestAnimationFrame(()=>{alignQueued=0;alignAll();});};
+if(document.fonts)document.fonts.ready.then(alignSoon);
+if(window.ResizeObserver){const ro=new ResizeObserver(alignSoon);new MutationObserver(()=>document.querySelectorAll('#d-list .ent .orig').forEach(n=>ro.observe(n))).observe($('#d-list'),{childList:true});}
 function entHTML(it){const on=pub.has(it.id),lk=!it.publishable,chg=it.status==='changed'&&!on;
   const st=lk?'locked':on?'public':chg?'changed':'private';
-  const left=`<div class="orig"><input type="checkbox" ${on?'checked':''} ${lk?'disabled':''} title="${lk?'this kind of content cannot be published':on?'untick to pull it back':'tick to give it to the guest'}"><div><div class="t">${short(it.title)}<span class="st ${st}">${st}</span></div><div class="path">${esc(it.path||it.source)}${it.note?' · '+esc(it.note):''}</div>${tierHTML(it)}<pre class="raw ${texts[it.id]===undefined?'wait':''}">${texts[it.id]===undefined?'loading raw…':markHTML(texts[it.id]===undefined?'':(texts[it.id]||'(empty)').length>FOLD&&!unfold.has(it.id)?(texts[it.id].slice(0,FOLD)+'\n…'):(texts[it.id]||'(empty)'))}</pre>${texts[it.id]&&texts[it.id].length>FOLD?`<button class="more">${unfold.has(it.id)?'Show less':`Show all · ${fmt(texts[it.id].length)} chars`}</button>`:''}${texts[it.id]!==undefined&&on?chips(texts[it.id],'nothing flagged in the original'):''}</div></div>`;
+  const raw=texts[it.id],gv=drafts[it.id]!==undefined?drafts[it.id]:(raw||'');
+  // Long entries fold both boxes to the same height; one Show all / Show less under each box toggles both.
+  const fold=!unfold.has(it.id);
+  const more=raw===undefined?'':`<button class="more" type="button" hidden>${fold?'Show all':'Show less'}</button>`;
+  const left=`<div class="orig"><input type="checkbox" ${on?'checked':''} ${lk?'disabled':''} title="${lk?'this kind of content cannot be published':on?'untick to pull it back':'tick to give it to the guest'}"><div><div class="t">${short(it.title)}</div><div class="path">${esc(it.path||it.source)}${it.note?' · '+esc(it.note):''}</div><div class="tags"><span class="st ${st}">${st}</span>${tierHTML(it)}</div><pre class="raw ${raw===undefined?'wait':''} ${fold?'fold':''}">${raw===undefined?'loading raw…':markHTML(raw||'(empty)')}</pre>${more}</div></div>`;
   let right;
   if(on){const v=drafts[it.id]!==undefined?drafts[it.id]:(texts[it.id]||'');const edited=v.trim()!==(texts[it.id]||'').trim();const same=texts[it.id]!==undefined&&isSame(it.id)&&!asIs[it.id];const b=busy.has(it.id);const ns=nothingSafe.has(it.id)&&!v.trim()&&!b;
-    right=`<div class="gst"><div class="k"><span>GUEST VERSION · RAW · ${cb.fact?'INJECTED AS A FACT':cb.id==='skills'?'PUBLIC METHOD · LISTED IN THE GUEST PROMPT, FOLLOWED ON USE':'SENT AS A DOCUMENT'}</span><span><label title="let the original cross unchanged"><input type="checkbox" class="asis" ${asIs[it.id]?'checked':''}> AS-IS</label>${SR?'<button class="mic" type="button" title="Dictate into the guest version (browser speech recognition)">MIC</button>':''}<button class="draft" type="button" ${b?'disabled':''}>${b?'Drafting…':'Draft with Hermes'}</button><button class="reset" type="button">Original</button></span></div><textarea spellcheck="false" class="${edited?'edited':''} ${same?'same':''}" ${texts[it.id]===undefined?'':'data-filled="1"'} ${b?'disabled':''} placeholder="${ns?'Write the guest version yourself, or untick the entry.':'Guest version'}">${esc(b?'Hermes is drafting a guest version…':v)}</textarea>${texts[it.id]!==undefined&&!b?chips(v,asIs[it.id]?'crossing as-is, nothing flagged':'nothing flagged in the guest version'):''}${ns?`<div class="warn">HERMES DRAFTED NOTHING · IT JUDGED EVERY PART OF THIS NOTE PRIVATE (PATHS, EMPLOYER, DATES, ACCOUNTS) · WRITE A GUEST VERSION YOURSELF, OR UNTICK · NOTHING CROSSES WHILE THIS IS EMPTY</div>`:same?`<div class="warn">${!v.trim()?'EMPTY · NOTHING WOULD CROSS':'SAME AS THE ORIGINAL'} · DRAFT IT, EDIT IT, OR TICK AS-IS</div>`:''}</div>`;}
+    right=`<div class="gst"><div class="k"><span></span><span><button class="draft" type="button" ${b?'disabled':''} title="Hermes writes a guest version without the private details">${b?'Drafting…':'Draft with Hermes'}</button><button class="reset ${asIs[it.id]?'on':''}" type="button" title="publish the original unchanged">Original</button></span></div><textarea spellcheck="false" class="${edited?'edited':''} ${same?'same':''} ${fold?'fold':''}" ${texts[it.id]===undefined?'':'data-filled="1"'} ${b?'disabled':''} placeholder="${ns?'Write the guest version yourself, or untick the entry.':'Guest version'}">${esc(b?'Hermes is drafting a guest version…':v)}</textarea>${more}${ns?`<div class="warn">NOTHING SAFE TO SHARE · WRITE ONE OR UNTICK</div>`:same?`<div class="warn">${!v.trim()?'EMPTY':'UNCHANGED'} · CLICK DRAFT OR ORIGINAL</div>`:''}</div>`;}
   else if(chg)right=`<div class="gst"><div class="ghost"><span class="st changed">ORIGINAL CHANGED · DROPPED BACK TO PRIVATE</span><span class="why">The original was edited after you published it, so the guest lost it. Tick again to republish; the last guest version is below.</span>${drafts[it.id]?`<pre>${esc(drafts[it.id])}</pre>`:''}</div></div>`;
   else if(lk)right=`<div class="gst"><div class="ghost"><span class="st locked">LOCKED</span><span class="why">This kind of content never crosses, whoever ticks it.</span></div></div>`;
   else right=`<div class="gst"><div class="ghost"><span class="st">NOT IN THIS SESSION</span><span class="why">${esc(cb.guest.why||'untick on the left, and it is simply not there')}</span></div></div>`;
@@ -402,17 +419,17 @@ $('#d-list').addEventListener('change',async e=>{const row=e.target.closest('.en
 $('#d-list').addEventListener('click',e=>{
   const m=e.target.closest('.more');if(m){const id=m.closest('.ent').dataset.id;if(unfold.has(id))unfold.delete(id);else unfold.add(id);rerow(id);return;}
   const db=e.target.closest('.draft');if(db){draftOne(db.closest('.ent').dataset.id,true);return;}
-  const rs=e.target.closest('.reset');if(rs){const row=rs.closest('.ent'),id=row.dataset.id,ta=row.querySelector('textarea');ta.value=texts[id]||'';fit(ta);delete drafts[id];ta.classList.remove('edited');refreshCounts();return;}
+  const rs=e.target.closest('.reset');if(rs){const id=rs.closest('.ent').dataset.id;delete drafts[id];asIs[id]=true;via[id]='single';rerow(id);refreshCounts();return;}
   const lp=e.target.closest('.loadraw');if(lp){const ids=[...document.querySelectorAll('.ent')].map(r=>r.dataset.id);loadTexts(ids);lp.disabled=true;lp.textContent='Loading…';return;}
   const mp=e.target.closest('.morepage');if(mp){const k=mp.dataset.ch;pages[k]=(pages[k]||PAGE)+PAGE;renderList();}});
-$('#d-list').addEventListener('input',e=>{const ta=e.target.closest('textarea');if(!ta)return;fit(ta);const id=ta.closest('.ent').dataset.id;drafts[id]=ta.value;ta.classList.toggle('edited',ta.value.trim()!==(texts[id]||'').trim());ta.classList.toggle('same',isSame(id)&&!asIs[id]);const g=ta.closest('.gst');const old=g.querySelector('.flags');if(old)old.outerHTML=chips(ta.value,'nothing flagged in the guest version');const w=g.querySelector('.warn');if(w&&!(isSame(id)&&!asIs[id]))w.remove();refreshCounts();});
+$('#d-list').addEventListener('input',e=>{const ta=e.target.closest('textarea');if(!ta)return;fit(ta);markFold();const id=ta.closest('.ent').dataset.id;drafts[id]=ta.value;if(asIs[id]){asIs[id]=false;ta.closest('.gst').querySelector('.reset')?.classList.remove('on');}ta.classList.toggle('edited',ta.value.trim()!==(texts[id]||'').trim());ta.classList.toggle('same',isSame(id)&&!asIs[id]);const g=ta.closest('.gst');const old=g.querySelector('.flags');if(old)old.outerHTML=chips(ta.value,'nothing flagged in the guest version');const w=g.querySelector('.warn');if(w&&!(isSame(id)&&!asIs[id]))w.remove();refreshCounts();});
 async function saveAll(){if(demo)return toast('Demo data, nothing saved');const public_texts={};for(const id of pub){if(asIs[id])continue;const dft=(drafts[id]||'').trim();if(dft&&dft!==(texts[id]||'').trim())public_texts[id]=dft;}
   const ids=[...pub].filter(id=>!(via[id]==='bulk-B'&&!public_texts[id]));
   const r=await fetch('/api/board/save',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({public_ids:ids,public_texts,decisions:Object.fromEntries(Object.entries(via).map(([k,v])=>[k,{via:v}]))})});
   if(!r.ok)return toast('Save failed');const j=await r.json();combo=j.combination||null;
   toast(`Synced: ${j.facts} facts, ${j.documents} documents now reach the guest`+((j.rejected||[]).length?` · ${j.rejected.length} refused (bulk click outside its tier, or marked do not publish)`:'')+(combo&&combo.hit?' · combination warning':'')+(j.failed?` · REVOKE INCOMPLETE: ${j.failed} guest session(s) not deleted; those guests now get fresh sessions; save again to retry`:''));
   const id=cb&&cb.id;await load();if(open&&id){cb=SOURCES.find(s=>s.id===id);renderList();if($('#detail').classList.contains('asguest'))renderGuest();}}
-$('#d-save').onclick=saveAll;
+$('#d-save').onclick=saveAll;$('#d-undo').onclick=()=>discard();
 // ---------- "view as guest": the raw section the plugin injects, rebuilt from the synced projection
 $('#d-guest').onclick=()=>{const det=$('#detail');const on=det.classList.toggle('asguest');$('#d-guest').classList.toggle('on',on);if(on)renderGuest();};
 async function renderGuest(){const g=$('#gview');g.innerHTML='<p class="note">Loading the synced projection…</p>';
@@ -432,11 +449,12 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#pol').classList
 // ---------- triage: rules, then Hermes, sort every entry into A/B/C; the owner still clicks every entry over
 const TIER_TXT={A:'A · AS-IS',B:'B · REWRITE',C:'C · PRIVATE'};
 function tierHTML(it){const c=cls[it.id];if(!c)return '';const rh=c.rules_hit||[];const v=via[it.id]||it.decided_via;
-  return `<div class="tier t${c.tier}" title="${esc(rh.map(r=>r+': '+((rulesInfo[r]||{}).description||'')).join('\n'))}"><b>${TIER_TXT[c.tier]}</b>${esc(c.reason)}${rh.length?` <span class="rh">${rh.map(esc).join(' · ')}</span>`:''}${v?`<span class="via">· ${esc(v)}</span>`:''}</div>`;}
+  return `<span class="tier t${c.tier}" title="${esc((c.reason||'')+(v?' · '+v:''))}"><b>${TIER_TXT[c.tier]}</b></span>`+rh.map(r=>`<span class="tag" title="${esc((rulesInfo[r]||{}).description||r)}">${esc(r.replace(/_/g,' '))}</span>`).join('');}
 function tierCounts(){const n={A:0,B:0,C:0};for(const it of items){const c=cls[it.id];if(c)n[c.tier]++;}return n;}
 function drawTriage(){const t=$('#triage');if(!t)return;const n=tierCounts(),done=Object.keys(cls).length,dirty=snapshot()!==initial||Object.keys(via).length>0;
   t.innerHTML=`<div class="tl"><span class="lbl">TRIAGE · RULES FIRST, THEN HERMES · NOTHING CROSSES WITHOUT YOUR CLICK</span><span class="lbl">${done?`${n.A} A · ${n.B} B · ${n.C} C`:'NOT CLASSIFIED YET'}</span></div>`+
-  `<div class="tb"><button class="act" id="t-run">${done?'Classify again':'Classify'}</button><button class="act" data-bulk="A" ${n.A?'':'disabled'}>A · adopt all ${n.A} as-is</button><button class="act" data-bulk="B" ${n.B?'':'disabled'}>B · draft guest versions for all ${n.B}</button><button class="act" data-bulk="C" ${n.C?'':'disabled'}>C · keep all ${n.C} private</button><button class="act primary" id="t-save" ${dirty?'':'disabled'}>Save &amp; sync</button></div>`+
+  `<div class="tb"><button class="act" id="t-run">${done?'Classify again':'Classify'}</button><button class="act" data-bulk="A" ${n.A?'':'disabled'}>A · adopt all ${n.A} as-is</button><button class="act" data-bulk="B" ${n.B?'':'disabled'}>B · draft guest versions for all ${n.B}</button><button class="act" data-bulk="C" ${n.C?'':'disabled'}>C · keep all ${n.C} private</button><button class="act" id="t-undo" ${dirty?'':'disabled'} title="drop the changes you have not saved">Discard changes</button><button class="act primary" id="t-save" ${dirty?'':'disabled'}>Save &amp; sync</button></div>`+
+  `<div class="legend"><div class="tier tA"><b>A · AS-IS</b>Nothing personal: text she already published, or a pure method (rules, checklists, thresholds). Can cross unchanged.</div><div class="tier tB"><b>B · REWRITE</b>A shareable core wrapped in personal detail: where she lives, her job, pets, routines, opinions about private people. Crosses only as a guest version written in general terms.</div><div class="tier tC"><b>C · PRIVATE</b>Credentials, accounts, wallets, addresses, phone or email, health, names of family, partners or doctors, anything she marked private. Never crosses.</div></div>`+
   (combo&&combo.hit?`<div class="warn">${esc(combo.message)} · ${combo.ids.length} entries marked B</div>`:'')+
   `<div class="tnote">A crosses unchanged, B crosses only as a guest version, C stays here. A bulk button only ever takes entries of its own tier; C never crosses in bulk. Every entry stays editable one by one, and every click is written to the approval log.</div>`;}
 async function runClassify(rulesOnly){const b=$('#t-run');if(b&&!rulesOnly){b.disabled=true;b.textContent='Classifying…';}const t0=Date.now();
@@ -446,15 +464,24 @@ async function runClassify(rulesOnly){const b=$('#t-run');if(b&&!rulesOnly){b.di
   catch(err){toast('Classify failed: '+err.message);}
   drawTriage();if(open)renderList();}
 document.addEventListener('click',async e=>{const t=e.target;
-  if(t.id==='t-run'){if(demo)return toast('Demo data');runClassify();return;}
+  if(t.id==='t-run'){if(demo)return toast('Demo data');if(!await confirmRun('classify'))return;runClassify();return;}
   if(t.id==='t-save'){saveAll();return;}
+  if(t.id==='t-undo'){discard();return;}
   const b=t.dataset&&t.dataset.bulk;if(!b||demo||document.body.classList.contains('ro'))return;
   const ids=items.filter(it=>it.publishable&&cls[it.id]&&cls[it.id].tier===b).map(it=>it.id);
+  if(b==='B'&&!await confirmRun('draft'))return;
   if(b==='A'){for(const id of ids){pub.add(id);asIs[id]=true;delete drafts[id];via[id]='bulk-A';}}
   else if(b==='C'){for(const id of ids){pub.delete(id);via[id]='bulk-C';}}
   else{for(const id of ids){pub.add(id);asIs[id]=false;via[id]='bulk-B';}t.disabled=true;const q=[...ids];let n=0;
     await Promise.all(Array(4).fill(0).map(async()=>{while(q.length){const id=q.shift();await draftOne(id);n++;t.textContent=`Drafting ${n}/${ids.length}…`;if(nothingSafe.has(id)||!(drafts[id]||'').trim())pub.delete(id);}}));}
   build();drawTriage();if(open)renderList();});
+const ASK={classify:['CLASSIFY','Sorts every entry in this book into A (share as it is), B (share a rewritten version) or C (keep private). Nothing is published. It asks your Hermes model, so it can take a little while and cost a little.'],
+  draft:['DRAFT GUEST VERSIONS','Hermes writes a guest version of every B entry, with the private details taken out. You read and edit each one before Save & sync. It asks your Hermes model once per entry, so it can take a few minutes and cost a little.']};
+function confirmRun(k){const m=$('#ask');$('#ask-t').textContent=ASK[k][0];$('#ask-b').textContent=ASK[k][1];m.style.display='flex';$('#ask-ok').focus();
+  return new Promise(res=>{const done=v=>{m.style.display='none';m.onclick=null;document.removeEventListener('keydown',key);res(v);};
+    const key=e=>{if(e.key==='Escape')done(false);};document.addEventListener('keydown',key);
+    m.onclick=e=>{const id=e.target.id;if(id==='ask-ok')done(true);else if(id==='ask-no'||e.target===m)done(false);};});}
+function discard(){const s=self.savedState;if(!s)return;pub=new Set(s.pub);drafts={...s.drafts};asIs={...s.asIs};via={};nothingSafe.clear();unfold.clear();drawTriage();if(open)renderList();refreshCounts();toast('Unsaved changes discarded');}
 function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';setTimeout(()=>e.style.display='none',2600);}
 // Dictation uses the browser's own speech recognition (Chrome, Edge, Safari); no server-side model.
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;let rec=null;

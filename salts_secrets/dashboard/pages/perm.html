@@ -46,7 +46,7 @@ select,input[type=text]{font:inherit;background:var(--surface);color:var(--text)
 select:focus,input[type=text]:focus{outline:none;border-color:var(--accent)}
 .code{color:var(--accent);background:#fff;border:1px solid var(--accent);padding:6px 10px;border-radius:0;display:inline-block;margin:6px 0;user-select:all;letter-spacing:.1em}
 .card{border:1px solid var(--hair);border-radius:0;background:var(--surface);padding:10px 12px;margin:12px 0}
-.tc{padding:0}.tc .m{margin:0}.tc td:nth-child(-n+3){white-space:nowrap}.tc #files{padding:8px 12px;border-top:1px solid var(--hair)}
+.tc{padding:0}.tc .m{margin:0}.tc td:nth-child(-n+3){white-space:nowrap}.m td{overflow-wrap:anywhere}.tc #files{padding:8px 12px;border-top:1px solid var(--hair)}
 code{background:var(--sel);color:var(--accent);padding:1px 5px}
 .bar{position:sticky;top:0;height:64px;padding:0 36px;margin:0;display:flex;justify-content:space-between;align-items:center;flex-wrap:nowrap;gap:0;border-bottom:1px solid var(--hair);color:var(--accent);background:var(--bg);z-index:3}
 .bar .l,.bar .r{display:flex;align-items:center;gap:16px}.bar .r{gap:26px}.bar .line{width:40px;height:1px;background:currentColor}
@@ -93,9 +93,9 @@ function draw(){
     +CFG.map(t=>{const p=S.profiles[t],a=(S.audit||{})[t]||[];
       const who=t==='guest'?'everyone who does not sign in':planned(t)?'planned, not implemented':'signed-in members';
       const st=!p.deployed?'<span class="lk">not deployed</span>':a.length?`<span class="lk">⚠ isolation check failed: ${a.map(esc).join('; ')}</span>`:'<span class="ok">deployed · isolation check passed</span>';
-      return row(`<b${planned(t)?' class="no"':''}>${esc(S.labels[t])}</b>`,who,`<b>${esc(p.name)}</b>`,st,esc(p.home));}).join('')
+      return row(`<b${planned(t)?' class="no"':''}>${esc(S.labels[t])}</b>`,who,`<b>${esc(p.name)}</b>`,st,esc(p.home).replace(/\//g,'/<wbr>'));}).join('')
     +row('<b class="lk">Blocked</b>','never reaches Hermes (device + IP)','—','—','—');
-  $('#files').innerHTML='Policy file: <b>'+esc(S.policy_file)+'</b>';
+  $('#files').innerHTML='Policy file: <b>'+esc(S.policy_file).replace(/\//g,'/<wbr>')+'</b>';
   $('#gaccess').checked=!!S.guest_access;
   $('#blocks').innerHTML=(S.blocklist||[]).length?'<tr><th>Kind</th><th>Value</th><th>Member</th><th>Until</th><th></th></tr>'+S.blocklist.map(b=>
     `<tr><td>${b.kind==='ip'?'IP':'device'}</td><td class="dim">${esc(b.value)}</td><td>${esc(b.name)}</td><td class="dim">${new Date(b.until*1000).toLocaleDateString()}</td>

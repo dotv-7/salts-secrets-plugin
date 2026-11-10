@@ -254,14 +254,13 @@ nav.salt-nav.hide-own .r a.own{visibility:hidden}
 </style>"""
 _NAV_BLOCK = re.compile(r"<!--SALT-NAV-->(.*?)<!--/SALT-NAV-->", re.DOTALL)
 _WEB_FONTS = re.compile(r"<link[^>]+fonts\.(?:googleapis|gstatic)\.com[^>]*>")
-# Inside the Hermes dashboard: API calls go to this plugin's routes with the dashboard session token, links
-# switch the tab's page, and the fonts come from the plugin's own bundle instead of Google.
+# Inside the Hermes dashboard: API calls go to this plugin's routes through the plugin SDK's authedFetch (it
+# applies the base path and the loopback-token or gated-cookie auth), links switch the tab's page, and the
+# fonts come from the plugin's own bundle instead of Google.
 DASHBOARD_SHIM = """<script>(function(){
-var P=window.parent;if(P===window||!P.__HERMES_PLUGIN_SDK__)return;
-var T=P.__HERMES_SESSION_TOKEN__,B=(P.__HERMES_BASE_PATH__||'')+'/api/plugins/salts-secrets',F=window.fetch.bind(window);
-window.fetch=function(u,i){i=i||{};if(typeof u==='string'&&u.indexOf('/api/')===0){var h=new Headers(i.headers||{});
-if(T&&!h.has('X-Hermes-Session-Token'))h.set('X-Hermes-Session-Token',T);
-return F(B+u.slice(4),Object.assign({},i,{headers:h,credentials:'include'}));}return F(u,i);};
+var P=window.parent,S=P!==window&&P.__HERMES_PLUGIN_SDK__;if(!S||!S.authedFetch)return;
+var B='/api/plugins/salts-secrets',F=window.fetch.bind(window);
+window.fetch=function(u,i){if(typeof u==='string'&&u.indexOf('/api/')===0)return S.authedFetch(B+u.slice(4),i);return F(u,i);};
 var PAGES={'/shelf':'shelf','/perm':'perm','/guests':'guests','/doc':'doc'};
 document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a[href]');if(!a)return;
 var href=a.getAttribute('href');if(href.charAt(0)!=='/'||href.charAt(1)==='/')return;e.preventDefault();
