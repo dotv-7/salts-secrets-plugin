@@ -2,7 +2,7 @@
 <html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Permissions · Hermes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Antonio:wght@400&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Antonio:wght@400;500&family=Oswald:wght@500;600&family=JetBrains+Mono:wght@400;500;600&display=swap">
 <style>
 :root{--mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,"Noto Sans Mono CJK SC","PingFang SC",monospace;--disp:"Antonio",Impact,"PingFang SC",sans-serif;
 --bg:#f2f2f2;--surface:#fdfdfd;--text:#000091;--dim:#6b6bd6;--accent:#0000f2;--border:rgba(0,0,242,.35);--hair:rgba(0,0,242,.15);--ok:#0000f2;--err:#b91c1c;--warn:#b45309;--sel:#e6e6f4;--code:#fff;--frame:#7f7fff}
@@ -56,16 +56,32 @@ code{background:var(--sel);color:var(--accent);padding:1px 5px}
 @media (max-width:640px){.bar{padding:0 16px}.bar .r{gap:14px}.bar .line{display:none}}
 body.rotop nav.salt-nav{top:33px}
 .robar{position:sticky;top:0;z-index:45;margin:0;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:14px 14px 8px;text-align:center}
-.ro #save,.ro details button{display:none!important}.ro input,.ro select{opacity:.6;cursor:not-allowed}
+.ro #save,.ro #undo,.ro details button{display:none!important}.ro input,.ro select{opacity:.6;cursor:not-allowed}
 .robar.flash{animation:roflash .45s 2}@keyframes roflash{50%{background:#f59e0b}}
+.tc{border:0}
+#tiers{margin:0;padding:12px 16px 12px 36px;list-style:square;color:var(--text)}#tiers li{padding:5px 0}#tiers b{font-weight:600}
+#tiers .pf{list-style:none;margin:8px 0 0 -20px;padding-top:12px;border-top:1px solid var(--hair)}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 8px;border:1px solid var(--accent);font:500 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--accent);white-space:nowrap}
+.pill.on{background:var(--accent);color:#fff}.pill.mute{border-color:var(--border);color:var(--dim)}.pill.bad{border-color:var(--err);color:var(--err)}.pill.badf{background:var(--err);border-color:var(--err);color:#fff}
+.tc #files{display:flex;gap:12px;align-items:center;padding:12px 16px;border-top:1px solid var(--hair);font-size:12px}.tc #files b{font-weight:500;color:var(--text)}
+#matrix th{background:none;color:var(--dim);font:500 10.5px/1 var(--mono);letter-spacing:.14em;padding:14px 16px 12px;border-top:1px solid var(--hair);border-bottom:1px solid var(--accent);vertical-align:bottom}
+#matrix{margin:0}#matrix td{padding:10px 16px;vertical-align:middle}#matrix tr:hover td{background:none}
+#matrix .cat td{background:none;color:var(--accent);font:600 13px/1 "Oswald",var(--disp);letter-spacing:.08em;text-transform:uppercase;padding:18px 16px 8px;border-top:1px solid var(--hair)}
+#matrix .cat+tr td{border-top:0}
+.tc,details{background:#f4f4fb}.tc{margin:0}details{margin:0 0 44px;border:1px solid var(--accent)}
+#tiers th,#matrix th{background:#d9d9f0;color:var(--text)}
+#tiers td,#matrix tr:not(.cat) td{background:#f4f4fb}
+#tiers tr:hover td,#matrix tr:not(.cat):hover td{background:#f4f4fb}
+#matrix .cat td{background:var(--accent)!important;color:#fff;padding:9px 16px;border-top:0}
+.tc #files{background:#f4f4fb}
+details>summary{background:var(--text);color:#fff;font:600 16px/1.2 "Oswald",var(--disp);letter-spacing:.08em;text-transform:uppercase;padding:13px 16px}details>summary .dim{color:#c9c9ff}details>summary::marker{color:#fff}
 .rotip{position:fixed;z-index:80;pointer-events:none;background:#b45309;color:#fff;font:600 10.5px/1 var(--mono);letter-spacing:.08em;padding:7px 9px;opacity:0;transition:opacity .15s}.rotip.on{opacity:1}
 
 </style></head><body>
-<!--SALT-NAV--><button id="save" class="primary" disabled>Save &amp; sync</button><!--/SALT-NAV-->
+<!--SALT-NAV--><button id="undo" class="primary" disabled title="drop the changes you have not saved">Discard changes</button><button id="save" class="primary" disabled>Save &amp; sync</button><!--/SALT-NAV-->
 <div class="wrap">
-<p class="dim" style="margin:16px 0 0">Who can do what. Who can know what is set on the CONTEXT page.</p>
-<div class="card tc"><table class="m" id="tiers"></table><div class="dim" id="files"></div></div>
-<details open><summary>Tool access<span class="dim">tick = allowed for that tier; red lock = never for anyone but the owner</span></summary><div style="overflow-x:auto"><table class="m" id="matrix"></table></div></details>
+<details open style="margin-top:24px"><summary>Tiers</summary><ul id="tiers"></ul></details>
+<details open><summary>Tool access</summary><div style="overflow-x:auto"><table class="m" id="matrix"></table></div></details>
 <details open><summary>Access control<span class="dim">a blocked person stays blocked after clearing cookies</span></summary><div style="padding:8px 12px">
   <label><input type="checkbox" id="gaccess"> Let guests chat without signing in</label>
   <span class="dim">(off: only people with an invite code can chat; the most complete block there is)</span>
@@ -87,20 +103,19 @@ async function api(path,body){const r=await fetch(path,body?{method:'POST',heade
 async function load(j){S=j||await api('/api/perm');policy={};for(const t of CFG)policy[t]=new Set(S.policy[t]);initial=snap();draw();}
 const snap=()=>CFG.map(t=>[...policy[t]].sort().join()).join('|');
 function draw(){
-  const row=(tier,who,prof,state,home)=>`<tr><td>${tier}</td><td>${who}</td><td>${prof}</td><td>${state}</td><td class="dim">${home}</td></tr>`;
-  $('#tiers').innerHTML='<tr><th>Tier</th><th>Who</th><th>Profile</th><th>Status</th><th>Home</th></tr>'
-    +row('<b class="ok">Owner</b>','you · every tool','<b>this profile</b>','<span class="ok">active</span>','—')
+  const li=(...parts)=>`<li><b>${parts[0]}</b> · ${parts.slice(1).join(' · ')}</li>`;
+  $('#tiers').innerHTML=li('Owner','you, every tool','this profile','active')
     +CFG.map(t=>{const p=S.profiles[t],a=(S.audit||{})[t]||[];
-      const who=t==='guest'?'everyone who does not sign in':planned(t)?'planned, not implemented':'signed-in members';
-      const st=!p.deployed?'<span class="lk">not deployed</span>':a.length?`<span class="lk">⚠ isolation check failed: ${a.map(esc).join('; ')}</span>`:'<span class="ok">deployed · isolation check passed</span>';
-      return row(`<b${planned(t)?' class="no"':''}>${esc(S.labels[t])}</b>`,who,`<b>${esc(p.name)}</b>`,st,esc(p.home).replace(/\//g,'/<wbr>'));}).join('')
-    +row('<b class="lk">Blocked</b>','never reaches Hermes (device + IP)','—','—','—');
-  $('#files').innerHTML='Policy file: <b>'+esc(S.policy_file).replace(/\//g,'/<wbr>')+'</b>';
+      const who=t==='guest'?'everyone who does not sign in':planned(t)?'planned':'signed-in members';
+      const st=!p.deployed?'not deployed':a.length?`<span class="lk">isolation check failed: ${a.map(esc).join('; ')}</span>`:'deployed, isolated ✓';
+      return li(esc(S.labels[t]),who,'profile '+esc(p.name),st,esc(p.home));}).join('')
+    +li('Blocked','never reaches Hermes','blocked by device + IP')
+    +'<li class="pf"><b>Policy file</b> · '+esc(S.policy_file)+'</li>';
   $('#gaccess').checked=!!S.guest_access;
   $('#blocks').innerHTML=(S.blocklist||[]).length?'<tr><th>Kind</th><th>Value</th><th>Member</th><th>Until</th><th></th></tr>'+S.blocklist.map(b=>
     `<tr><td>${b.kind==='ip'?'IP':'device'}</td><td class="dim">${esc(b.value)}</td><td>${esc(b.name)}</td><td class="dim">${new Date(b.until*1000).toLocaleDateString()}</td>
     <td><button data-ub="${esc(b.kind)}" data-v="${esc(b.value)}">Unblock</button></td></tr>`).join(''):'<tr><td class="dim">Blocklist is empty</td></tr>';
-  let h='<tr><th>Toolset</th>'+COLS.map(c=>`<th class="c${planned(c)?' dim':''}">${esc(S.labels[c])}${planned(c)?'<div style="font-size:11px">planned</div>':''}</th>`).join('')+'</tr>',cat='';
+  let h='<tr><th>Toolset</th>'+COLS.map(c=>`<th class="c">${esc(S.labels[c])}</th>`).join('')+'</tr>',cat='';
   for(const r of S.catalog){if(r.category!==cat){cat=r.category;h+=`<tr class="cat"><td colspan="6">${esc(cat)}</td></tr>`;}
     h+=`<tr><td>${esc(r.label)}<div class="dim" style="font-size:12px">${r.tools.map(esc).join(', ')}</div>`+
       (r.locked?`<div class="lk">🔒 ${esc(r.locked)}</div>`:r.warn?`<div class="wn">⚠ ${esc(r.warn)}</div>`:'')+'</td>'+
@@ -113,9 +128,9 @@ function draw(){
   $('#members').innerHTML=S.members.length?'<tr><th>Name</th><th>Tier</th><th>Created</th><th></th></tr>'+S.members.map(m=>
     `<tr><td>${esc(m.name)}</td><td><select data-m="${m.id}">${COLS.slice(1).map(t=>`<option value="${t}" ${t===m.tier?'selected':''} ${planned(t)&&t!==m.tier?'disabled':''}>${esc(S.labels[t])}${planned(t)?' (planned)':''}</option>`).join('')}</select></td>
     <td class="dim">${new Date(m.created*1000).toLocaleString()}</td><td><button data-del="${m.id}">Delete</button></td></tr>`).join(''):'<tr><td class="dim">No members yet</td></tr>';
-  $('#save').disabled=snap()===initial;}
+  dirty();}
 document.addEventListener('change',async e=>{const t=e.target;
-  if(t.dataset.t){t.checked?policy[t.dataset.t].add(t.dataset.id):policy[t.dataset.t].delete(t.dataset.id);$('#save').disabled=snap()===initial;}
+  if(t.dataset.t){t.checked?policy[t.dataset.t].add(t.dataset.id):policy[t.dataset.t].delete(t.dataset.id);dirty();}
   if(t.id==='gaccess'){S=await api('/api/perm/access',{action:'guest_access',enabled:t.checked});toast(t.checked?'Guests may chat':'Guests closed; invite codes only');draw();}
   if(t.dataset.m){S=await api('/api/perm/members',{action:'update',id:t.dataset.m,tier:t.value});toast('Now '+S.labels[t.value]+', effective at once');draw();}});
 document.addEventListener('click',async e=>{const ub=e.target.dataset.ub;
@@ -125,6 +140,8 @@ document.addEventListener('click',async e=>{const ub=e.target.dataset.ub;
 $('#madd').onclick=async()=>{const j=await api('/api/perm/members',{action:'add',name:$('#mname').value,tier:$('#mtier').value});
   $('#newcode').innerHTML=`Invite code for <b>${esc(j.added.name)}</b> (${esc(j.labels[j.added.tier])}), shown once:<br><span class="code">${esc(j.code)}</span>`;
   $('#mname').value='';S=j;draw();};
+const dirty=()=>{const d=snap()===initial;$('#save').disabled=d;$('#undo').disabled=d;};
+$('#undo').onclick=()=>{policy={};for(const t of CFG)policy[t]=new Set(S.policy[t]);draw();toast('Changes discarded');};
 $('#save').onclick=async()=>{const j=await api('/api/perm/save',{tiers:Object.fromEntries(CFG.map(t=>[t,[...policy[t]]]))});
   toast('Synced to: '+Object.keys(j.synced).map(t=>j.labels[t]).join(', ')+'. New sessions use it.');load(j);};
 load();

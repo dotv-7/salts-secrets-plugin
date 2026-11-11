@@ -430,8 +430,8 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
                            public_text=allow.get(it.id, {}).get("public_text", ""),
                            decided_via=allow.get(it.id, {}).get("decided_via", ""),
                            classification=tiers.get(it.id)) for it in items],
-            "owner_home": str(s.owner_home.resolve()), "public_home": str(s.public_home.resolve()),
-            "workspace_roots": [str(Path(r).resolve()) for r in s.workspace_roots]})
+            "owner_home": ctx.display_path(s.owner_home.resolve()), "public_home": ctx.display_path(s.public_home.resolve()),
+            "workspace_roots": [ctx.display_path(Path(r).resolve()) for r in s.workspace_roots]})
 
     @app.get("/api/board/text")
     def board_text(request: Request, id: str):
@@ -496,6 +496,30 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
         require_owner(request)
         board.save_policy(s.owner_home, str((await request.json()).get("text") or ""))
         return {"ok": True}
+
+    @app.post("/api/board/policy/rewrite")
+    async def policy_rewrite(request: Request):
+        require_json(request)
+        require_owner(request)
+        body = await request.json()
+        try:
+            return {"text": await board.rewrite_policy(str(body.get("text") or ""), str(body.get("instruction") or ""))}
+        except board.DraftError as exc:
+            raise HTTPException(502, str(exc))
+
+    @app.get("/api/board/rules")
+    def rules_get(request: Request):
+        require_reader(request)
+        return board.rules_body(s.owner_home)
+
+    @app.post("/api/board/rules")
+    async def rules_set(request: Request):
+        require_json(request)
+        require_owner(request)
+        try:
+            return {"ok": True, **board.save_rules(s.owner_home, str((await request.json()).get("text") or ""))}
+        except ValueError as exc:
+            raise HTTPException(400, str(exc))
 
     @app.post("/api/board/draft")
     async def board_draft(request: Request):

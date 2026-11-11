@@ -14,7 +14,6 @@ import sys
 from pathlib import Path
 
 HERMES = "Hermes Agent v0.23.0 (local 2bd378ed, hermes-latest)"
-MODEL_NOTE = "deepseek-flash as the API reports it: the DeepSeek Flash build of 2026-10-17, set in Lena's config.yaml, the same model on both sides; chain of thought is removed before publishing"
 FOLD = {"sys": 14000, "tools": 6000, "tool": 7000, "think": 14000, "asst": 14000, "call": 6000, "user": 14000, "note": 2000}
 
 CSS = """
@@ -44,7 +43,7 @@ a{color:inherit;text-decoration:none}
 .side .key{margin-top:14px;font:400 10px/1.6 var(--mono);color:var(--muted)}
 .main{padding:28px 36px 90px;min-width:0}
 .hero .eyebrow{color:var(--blue);display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.hero h1{margin:12px 0 14px;font:400 clamp(44px,6.5vw,96px)/.9 var(--disp);letter-spacing:.005em;text-transform:uppercase;color:var(--blue)}
+.hero h1{margin:14px 0 18px;font:600 clamp(52px,7.1vw,112px)/.95 "Oswald",var(--disp);letter-spacing:0;text-transform:uppercase;color:var(--blue)}
 .hero .lede{font:400 17px/1.5 var(--serif);max-width:80ch;color:var(--ink)}
 .meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px 24px;margin:18px 0 6px;font:400 11px/1.6 var(--mono);color:var(--muted)}
 .meta div{min-width:0;overflow-wrap:anywhere}.meta b{color:var(--blue);font-weight:500}
@@ -57,7 +56,7 @@ a{color:inherit;text-decoration:none}
 .diff b{color:var(--blue);font-weight:500;display:block;margin-bottom:2px}
 .pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:stretch;margin-bottom:10px}
 .cell{min-width:0;display:flex;flex-direction:column}
-.cell .seg{flex:1}
+.cell .seg{flex:0 0 auto}
 .gap{flex:1;border:1px dashed rgba(0,0,242,.3);display:flex;align-items:center;justify-content:center;color:var(--muted);font:400 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;min-height:44px}
 .seg{border:1px solid var(--hair);background:var(--sheet)}
 .seg .h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 10px;border-bottom:1px solid var(--hair);font:500 9.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--blue)}
@@ -66,13 +65,16 @@ a{color:inherit;text-decoration:none}
 .seg.sys .h i{background:#047857}.seg.tools .h i{background:#0ea5e9}.seg.user .h i{background:var(--blue)}.seg.think .h i{background:#a855f7}.seg.call .h i{background:#f97316}.seg.tool .h i{background:#b45309}.seg.asst .h i{background:#1a1a1a}.seg.note .h i{background:#9ca3af}
 .seg pre{margin:0;padding:10px 12px;white-space:pre-wrap;overflow-wrap:anywhere;font:400 11.5px/1.5 var(--mono);color:#1a1a1a}
 .seg.asst pre{color:var(--ink)}.seg.think pre{color:#5b21b6;background:#faf5ff}.seg.user pre{color:var(--blue);font-size:12.5px}
-.seg .fold{display:none}.seg.open .fold{display:inline}.seg .more{display:block;width:100%;border:0;border-top:1px solid var(--hair);background:#fff;color:var(--blue);font:500 9.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:8px;cursor:pointer}
+.seg .fold{display:none}.seg.open .fold{display:inline}.seg:not(.open)>pre:has(.fold){max-height:360px;overflow:hidden}.seg.clip:not(.open)>pre{max-height:360px;overflow:hidden}.seg .more{display:block;width:100%;border:0;border-top:1px solid var(--hair);background:transparent;color:var(--blue);font:500 9.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;padding:8px;cursor:pointer}
 .usage{font:400 10.5px/1.6 var(--mono);color:var(--muted);padding:6px 2px 2px;display:flex;flex-wrap:wrap;gap:4px 16px}.usage b{color:var(--blue);font-weight:500}
 .foot{display:flex;justify-content:space-between;color:var(--blue);padding:40px 0 0}
 @media (max-width:1000px){.wrap{grid-template-columns:1fr}.side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--hair)}.pair,.heads,.diff{grid-template-columns:1fr}.heads .r{text-align:left}}
 """
 
 TOP = "<!--SALT-NAV--><!--/SALT-NAV-->"  # the demo server puts the shared top bar here
+
+
+FOLD_JS = "<script>document.querySelectorAll('.seg').forEach(s=>{if(s.querySelector('.more'))return;const p=s.querySelector(':scope>pre');if(!p||p.scrollHeight<=380)return;s.classList.add('clip');const b=document.createElement('button'),l='Show all · '+p.textContent.length.toLocaleString('en-US')+' chars';b.className='more';b.textContent=l;b.onclick=()=>{s.classList.toggle('open');b.textContent=s.classList.contains('open')?'Show less':l};s.appendChild(b)})</script>"
 
 
 def esc(value) -> str:
@@ -208,10 +210,6 @@ def render(bundle: dict, out_dir: Path) -> Path:
         body = "\n".join(json.dumps(t, ensure_ascii=False) for t in tools)
         return seg("tools", f"tools · {len(tools)} schemas", body, None, f"{side_name} · one JSON object per tool, exactly as sent")
 
-    def ses(side):
-        return side["session"]
-
-    model_api = next((c.get("model") for t in bundle["turns"] for c in t["calls"].values() if c.get("model")), "") or L["session"].get("model")
     aligned_turns = [align(steps(tl[i] if i < len(tl) else [], "L"), steps(tr[i] if i < len(tr) else [], "R")) for i in range(len(qs))]
 
     # Sidebar: one outline for both sessions.
@@ -237,9 +235,7 @@ def render(bundle: dict, out_dir: Path) -> Path:
             return ""
         if call.get("error"):
             return f'<div class="usage"><b>API call failed</b> {esc(call["error"])}</div>'
-        u = call.get("usage") or {}
-        return ('<div class="usage"><b>API usage for this turn</b>' + "".join(f'<span>{esc(k)} <b>{fmt(v) if isinstance(v, int) else esc(json.dumps(v))}</b></span>' for k, v in u.items())
-                + f'<span>{esc(call.get("seconds"))} s</span><span>finish {esc(call.get("finish_reason"))}</span></div>')
+        return ""
     turns_html = []
     for i, q in enumerate(qs):
         call = bundle["turns"][i]["calls"] if i < len(bundle["turns"]) else {}
@@ -248,24 +244,22 @@ def render(bundle: dict, out_dir: Path) -> Path:
             la = seg(*a[:5], anchor=a[5]) if a else '<div class="gap">no step here</div>'
             rb = seg(*b[:5], anchor=b[5]) if b else '<div class="gap">no step here</div>'
             turns_html.append(f'<div class="pair"><div class="cell">{la}</div><div class="cell">{rb}</div></div>')
-        turns_html.append(f'<div class="pair"><div class="cell">{usage_html(call.get("owner"))}</div><div class="cell">{usage_html(call.get("public"))}</div></div>')
+        lu, ru = usage_html(call.get("owner")), usage_html(call.get("public"))
+        if lu or ru:
+            turns_html.append(f'<div class="pair"><div class="cell">{lu}</div><div class="cell">{ru}</div></div>')
 
     page = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Trace · Hermes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Antonio:wght@400&family=JetBrains+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Antonio:wght@400&family=Oswald:wght@600&family=JetBrains+Mono:wght@400;500&family=Inter+Tight:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;1,400&display=swap">
 <style>{CSS}</style></head><body>
 {TOP.format(count=f"{len(qs)} QUESTIONS · 2 SESSIONS")}
 <div class="wrap"><aside class="side">{"".join(side)}</aside>
 <main class="main">
 <section class="hero"><div class="eyebrow"><span class="lbl">SAME QUESTIONS, TWO SESSIONS · RUN {esc(bundle['run_id'])}</span></div>
 <h1>Same questions,<br>two sessions</h1>
-<p class="lede">{len(qs)} questions asked in one multi-turn conversation, in parallel, to Lena's own session and to the public session strangers reach. Everything each model received and produced is here, verbatim and in order: the stored system prompt, the exact tool schemas, every message row from state.db including the chain of thought, and the API usage of every call. Steps are aligned by kind so a tool call faces a tool call and a result faces a result; nothing is summarised, and nothing scrolls inside a block.</p>
-<div class="meta"><div><b>Model</b> {esc(model_api)} · {esc(MODEL_NOTE)}</div><div><b>Harness</b> {esc(HERMES)} · gateway {esc(bundle['hermes_url'])}</div>
-<div><b>Left session</b> {esc(ses(L)['id'])} · {esc(L['endpoint'])} · state.db {esc(L['db'])}</div><div><b>Right session</b> {esc(ses(R)['id'])} · {esc(R['endpoint'])} · state.db {esc(R['db'])}</div>
-<div><b>Left totals</b> {fmt(ses(L).get('input_tokens'))} in · {fmt(ses(L).get('output_tokens'))} out · {fmt(ses(L).get('cache_read_tokens'))} cached · {ses(L).get('tool_call_count')} tool calls · {len(L['messages'])} rows</div>
-<div><b>Right totals</b> {fmt(ses(R).get('input_tokens'))} in · {fmt(ses(R).get('output_tokens'))} out · {fmt(ses(R).get('cache_read_tokens'))} cached · {ses(R).get('tool_call_count')} tool calls · {len(R['messages'])} rows</div>
-<div><b>Plain sequences</b> <a href="run_{esc(bundle['run_id'])}_owner.prompt.txt" style="text-decoration:underline">left</a> · <a href="run_{esc(bundle['run_id'])}_public.prompt.txt" style="text-decoration:underline">right</a> · <a href="data/run.json" style="text-decoration:underline">bundle</a></div><div><b>Run</b> {esc(bundle['started'])}</div></div>
+<p class="lede">{len(qs)} questions asked in one multi-turn conversation, in parallel, to Lena's own session and to the public session strangers reach. Everything each model received and produced is here, verbatim and in order: the stored system prompt, the exact tool schemas, every message row from state.db including the chain of thought. Steps are aligned by kind so a tool call faces a tool call and a result faces a result; nothing is summarised, and nothing scrolls inside a block.</p>
+<div class="meta"><div><b>Harness</b> {esc(HERMES)}</div></div>
 </section>
 <div class="heads"><div><div class="who">Lena's own session</div><div class="sub">owner key · {esc(L['endpoint'])} · HERMES_HOME {esc(L['home'])}</div></div>
 <div class="r"><div class="who">Salt's assistant</div><div class="sub">guest key · {esc(R['endpoint'])} · HERMES_HOME {esc(R['home'])}</div></div></div>
@@ -273,7 +267,7 @@ def render(bundle: dict, out_dir: Path) -> Path:
 <div class="band" id="tools"><span class="lbl">TOOL SCHEMAS · SENT WITH EVERY CALL</span><span class="q">exported from each profile exactly as the api_server platform builds them (hermes_cli.prompt_size._build_inspection_agent)</span></div>
 <div class="pair"><div class="cell">{tools_block(L["tools"], "left")}</div><div class="cell">{tools_block(R["tools"], "right")}</div></div>
 {"".join(turns_html)}
-</main></div></body></html>"""
+</main></div>{FOLD_JS}</body></html>"""
     out_dir.mkdir(parents=True, exist_ok=True)
     run_page = out_dir / f"run_{bundle['run_id']}.html"
     run_page.write_text(page, encoding="utf-8")
