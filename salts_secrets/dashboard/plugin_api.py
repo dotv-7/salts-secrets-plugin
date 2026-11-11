@@ -56,6 +56,7 @@ class Install:
         self.workspaces = [Path(p).expanduser() for p in settings.get("workspaces") or [self.owner / "workspace"]]
         self.owner_name = str(settings.get("owner_name") or "the owner")
         self.public_name = str(settings.get("public_name") or self.owner_name)
+        self.owner_label = str(settings.get("owner_label") or self.owner_name)
 
     def homes(self) -> dict[str, Path]:
         return {t: self.owner / "profiles" / name for t, name in self.profiles.items()}
@@ -79,7 +80,7 @@ def page(name: str):
     if name not in board.DASHBOARD_PAGES:
         raise HTTPException(404, "no such page")
     s = Install()
-    return {"html": board.render_page(name, s.owner_name, s.public_name, dashboard=True)}
+    return {"html": board.render_page(name, s.owner_label, s.public_name, dashboard=True)}
 
 
 @router.get("/me")

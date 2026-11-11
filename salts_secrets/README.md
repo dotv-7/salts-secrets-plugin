@@ -251,6 +251,8 @@ Under `plugins.entries.salts-secrets.settings` in your profile's config.yaml:
 | `owners` | none (set by `setup --owner`) | your identities, `platform:user_id`; never guessed from `<PLATFORM>_ALLOWED_USERS` |
 | `public_profile` | `public` | the profile that answers everyone else |
 | `owner_name` | `the owner` | how the public profile refers to you; use a handle, not your real name |
+| `owner_label` | `owner_name` | the name the dashboard tab shows for you; never sent to guests |
+| `public_name` | `owner_name` | the name the dashboard tab shows for the public assistant |
 | `guest_rate_per_hour` | `20` | messages per guest per hour |
 | `workspaces` | `<HERMES_HOME>/workspace` | folders the Context tab offers |
 

@@ -218,7 +218,7 @@ function blinkLoop(){clearTimeout(blinkTimer);blinkTimer=setTimeout(()=>{portrai
 function talking(on){portrait.classList.toggle('talk',on);}
 function sealed(){clearTimeout(sealTimer);portrait.classList.remove('seal');void portrait.offsetWidth;portrait.classList.add('seal');sealTimer=setTimeout(()=>portrait.classList.remove('seal'),4500);}
 function whoCaption(r){const owner=r==='owner';whoBox.classList.toggle('owner',owner);
-  $('#whoName').textContent=owner?'Lena\'s Hermes':'Salt\'s assistant';$('#tries').hidden=owner&&!RO;}
+  $('#whoName').textContent=owner?'Lena\'s Hermes':'Salt\'s assistant';}
 $('#tries').addEventListener('click',e=>{const b=e.target.closest('button');if(!b||busy)return;inp.value=b.textContent;submit();});
 blinkLoop();
 // demo/dev: force a portrait state from the URL hash (#seal, #talk, #blink)
