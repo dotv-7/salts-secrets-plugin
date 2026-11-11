@@ -2,7 +2,7 @@
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Two Sessions · Hermes</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Antonio:wght@300;400;500&family=JetBrains+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;1,400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Antonio:wght@300;400;500&family=Oswald:wght@600&family=JetBrains+Mono:wght@400;500;600&family=Inter+Tight:wght@400;500;600&family=EB+Garamond:ital,wght@0,400;1,400&display=swap">
 <style>
 :root{--paper:#f2f2f2;--sheet:#fdfdfd;--ink:#000091;--muted:#6b6bd6;--blue:#0000f2;--navy:#0d0d24;--frame:#7f7fff;--rule:rgba(0,0,242,.85);--hair:rgba(0,0,242,.18);--ease:cubic-bezier(.2,.8,.2,1);
 --sans:"Inter Tight",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,monospace;--disp:"Antonio",Impact,sans-serif;--serif:"EB Garamond",Georgia,serif}
@@ -24,7 +24,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 /* hero */
 .hero{padding:54px 36px 30px;max-width:1400px;margin:0 auto}
 .hero .eyebrow{color:var(--blue);display:flex;gap:14px;align-items:center}
-.hero h1{margin:14px 0 18px;font:400 clamp(64px,9.5vw,150px)/.88 var(--disp);letter-spacing:.005em;text-transform:uppercase;color:var(--blue)}
+.hero h1{margin:14px 0 18px;font:600 clamp(52px,7.1vw,112px)/.95 "Oswald",var(--disp);letter-spacing:0;text-transform:uppercase;color:var(--blue)}
 .hero .lede{font:400 19px/1.45 var(--serif);max-width:66ch;color:var(--ink)}
 .hero .lede b{font-weight:400;color:var(--blue);border-bottom:1px solid var(--blue)}
 .hero .hook{margin:0 0 16px;padding-left:16px;border-left:3px solid var(--blue);font:italic 400 22px/1.4 var(--serif);max-width:60ch;color:var(--blue)}
@@ -161,7 +161,8 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .pol .k{display:flex;justify-content:space-between;align-items:center;color:var(--blue);gap:12px}.pol .k .lbl.box{color:var(--blue)}
 .pol .note{margin:0;font:400 14px/1.5 var(--serif);color:var(--ink)}.pol .note span{font:400 11px/1 var(--mono);color:var(--muted)}
 .pol textarea{flex:1;min-height:360px;font:400 12.5px/1.55 var(--mono);color:var(--ink);background:#fff;border:1px solid var(--blue);padding:12px;resize:vertical;outline:0;border-radius:0}
-.pol .acts{display:flex;justify-content:flex-end}.pol button.act{height:40px;padding:0 16px;border:1px solid var(--blue);background:var(--blue);color:#fff;font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;border-radius:0}
+.pol .acts{display:flex;justify-content:flex-end;gap:8px;align-items:center}.pol .acts input{flex:1;min-width:0;height:40px;border:1px solid var(--blue);background:#fff;padding:0 12px;font:400 14px/1 var(--serif);color:var(--ink);outline:0;border-radius:0}.pol .acts .err{flex:1;font:400 11px/1.4 var(--mono);color:var(--blue)}.pol button.act:disabled{opacity:.5;cursor:default}
+.pol .builtin{max-height:28vh;overflow:auto;border-top:1px solid var(--blue);padding-top:10px}.pol .builtin summary{cursor:pointer;color:var(--blue)}.pol .builtin .r{display:grid;grid-template-columns:200px 28px 1fr;gap:10px;padding:6px 0;border-bottom:1px solid #e6e6f4;font:400 12px/1.45 var(--serif);color:var(--ink)}.pol .builtin .r b,.pol .builtin .r i{font:500 10.5px/1.45 var(--mono);font-style:normal;color:var(--blue)}.pol .builtin .r code{display:block;font:400 10.5px/1.4 var(--mono);color:var(--muted);word-break:break-all}.pol button.act{height:40px;padding:0 16px;border:1px solid var(--blue);background:var(--blue);color:#fff;font:500 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;border-radius:0}
 .sbox{position:relative;display:inline-block}
 .sr{position:absolute;top:36px;left:0;width:min(90vw,640px);max-height:60vh;overflow:auto;background:var(--sheet);border:1px solid var(--blue);z-index:35;display:none;text-align:left;box-shadow:0 24px 60px -30px rgba(0,0,120,.5)}
 .sr.show{display:block}
@@ -185,7 +186,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .tier .rh{font:400 10px/1.4 var(--mono);color:#b91c1c}.tier .via{font:400 10px/1 var(--mono);color:var(--blue);margin-left:4px}
 body.rotop nav.salt-nav{top:33px}
 .robar{position:sticky;top:0;z-index:70;margin:0;background:#b45309;color:#fff;font:600 11px/1 var(--mono);letter-spacing:.1em;padding:14px 14px 8px;text-align:center}
-.ro #d-save,.ro #d-undo,.ro #t-save,.ro #t-undo,.ro #pol-save,.ro .draft,.ro .mic,.ro [data-bulk]{display:none!important}
+.ro #d-save,.ro #d-undo,.ro #t-save,.ro #t-undo,.ro #pol-save,.ro #pol-rw,.ro #pol-ask,.ro #rul-save,.ro .draft,.ro .mic,.ro [data-bulk]{display:none!important}
 .ro #d-list input,.ro #d-list textarea{opacity:.6;cursor:not-allowed}
 .robar.flash{animation:roflash .45s 2}@keyframes roflash{50%{background:#f59e0b}}
 .rotip{position:fixed;z-index:80;pointer-events:none;background:#b45309;color:#fff;font:600 10.5px/1 var(--mono);letter-spacing:.08em;padding:7px 9px;opacity:0;transition:opacity .15s}.rotip.on{opacity:1}
@@ -198,7 +199,6 @@ body.rotop nav.salt-nav{top:33px}
 <!--SALT-NAV--><span class="sbox"><input id="q" type="search" placeholder="SEARCH HER 3,800 ENTRIES…" autocomplete="off"><div class="sr" id="sr"></div></span><!--/SALT-NAV-->
 
 <section class="hero">
-  <div class="eyebrow"><span class="lbl">WHAT EACH SESSION IS BUILT FROM</span><span class="line" style="width:40px;height:1px;background:currentColor"></span><span class="lbl" id="hero-n"></span><span class="line" style="width:40px;height:1px;background:currentColor"></span><button class="lbl box" id="pol-open">WHAT MAY BE SHARED · EDIT</button></div>
   <h1>One Hermes,<br>two minds</h1>
   <blockquote class="hook">What if the Hermes you&#39;ve spent thousands of hours growing with could talk to everyone, without giving away a single secret?</blockquote>
   <p class="lede">Every turn, Hermes assembles its prompt from the sources below, top to bottom. <b>Lena's session</b> is built from all of them. <b>Salt's assistant</b>, the session strangers reach, is built from nothing of hers except what she ticked here. Nothing in between is a rule the model has to obey; it simply is not there.</p>
@@ -220,14 +220,15 @@ body.rotop nav.salt-nav{top:33px}
   <div class="dtop"><button class="lbl box close" id="close">CLOSE</button><span class="lbl" id="dWho">TWO SESSIONS</span></div>
   <div class="dhead">
     <div><span class="lbl su" id="d-su"></span><div class="ti" id="d-ti"></div><div class="desc" id="d-desc"></div><div class="counts" id="d-counts"></div></div>
-    <div><div class="acts"><button class="act" id="d-guest">View as guest</button><button class="act" id="d-undo" disabled title="drop the changes you have not saved">Discard changes</button><button class="act primary" id="d-save" disabled>Save &amp; sync</button></div><div class="cost" id="d-cost"></div></div>
+    <div><div class="acts"><button class="act" id="d-guest">View as guest</button><button class="act primary" id="d-undo" disabled title="drop the changes you have not saved">Discard changes</button><button class="act primary" id="d-save" disabled>Save &amp; sync</button></div><div class="cost" id="d-cost"></div></div>
   </div>
   <div class="cols"><span class="lbl">LENA'S HERMES · ORIGINAL</span><span class="lbl m"></span><span class="lbl r">SALT'S ASSISTANT · GUEST VERSION</span></div>
   <div class="list" id="d-list"></div>
   <div class="gview" id="gview"></div>
 </div>
 <div class="pol" id="ask"><div class="panel"><div class="k"><span class="lbl" id="ask-t"></span></div><p class="note" id="ask-b"></p><div class="acts"><button class="act" id="ask-no">Cancel</button><button class="act primary" id="ask-ok">OK</button></div></div></div>
-<div class="pol" id="pol"><div class="panel"><div class="k"><span class="lbl">WHAT MAY BE SHARED · THE DRAFTER READS THIS EVERY TIME</span><button class="lbl box" id="pol-close">CLOSE</button></div><p class="note">Plain markdown. Two lists: what is fine to share about Salt, and what must never cross. Every draft Hermes writes for a guest follows this file; edit it and the next draft changes. Stored at <span id="pol-path"></span>.</p><textarea id="pol-text" spellcheck="false"></textarea><div class="acts"><button class="act primary" id="pol-save">Save policy</button></div></div></div>
+<div class="pol" id="pol"><div class="panel"><div class="k"><span class="lbl">WHAT MAY BE SHARED · THE DRAFTER READS THIS EVERY TIME</span><button class="lbl box" id="pol-close">CLOSE</button></div><p class="note">Plain markdown. Two lists: what is fine to share about Salt, and what must never cross. Every draft Hermes writes for a guest follows this file; edit it and the next draft changes. Stored at <span id="pol-path"></span>.</p><textarea id="pol-text" spellcheck="false"></textarea><div class="acts"><input id="pol-ask" placeholder="Tell Hermes what to change, e.g. never mention her father"><button class="act" id="pol-rw">Rewrite with Hermes</button><button class="act primary" id="pol-save">Save policy</button></div></div></div>
+<div class="pol" id="rul"><div class="panel"><div class="k"><span class="lbl">PRIVACY RULES · CHECKED BEFORE HERMES</span><button class="lbl box" id="rul-close">CLOSE</button></div><p class="note">Regular expressions, matched case-insensitively. A hit sets the lowest tier an entry can get, B (guest rewrite) or C (never public); Hermes can raise it, never lower it. Add your own rules and words here; the built-in rules below stay on. Stored at <span id="rul-path"></span>. Run Classify again to apply.</p><textarea id="rul-text" spellcheck="false"></textarea><div class="acts"><span class="err" id="rul-err"></span><button class="act primary" id="rul-save">Save rules</button></div><details class="builtin"><summary class="lbl">BUILT-IN RULES · <span id="rul-n"></span></summary><div id="rul-list"></div></details></div></div>
 <div id="toast"></div>
 <script>
 const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -309,7 +310,6 @@ function guestCell(s){
   return `<div class="cell none"><div class="k"><span>${g.state==='cross'?'NOTHING CROSSED YET':'NOT IN THIS SESSION'}</span></div><div class="why">${esc(g.why)}</div></div>`;}
 function build(){
   const total=items.length,crossed=pub.size;
-  $('#hero-n').textContent=`${SOURCES.length} SOURCES`;
   $('#m-cross').textContent=hits?`${fmt(hits.size)} SEARCH HITS`:`${fmt(crossed)} ENTRIES TICKED`;
   if(meta.owner_home)$('#m-owner').textContent='owner profile · '+meta.owner_home;
   if(meta.public_home)$('#m-guest').textContent='public profile · '+meta.public_home;
@@ -442,21 +442,25 @@ async function renderGuest(){const g=$('#gview');g.innerHTML='<p class="note">Lo
   g.innerHTML=`<p class="note">This is the raw text salts-secrets puts into the guest's system prompt every turn, rebuilt from the last synced projection (${facts.length} facts, ${docs.length} documents). Ticks you have not saved yet are not in it. Document bodies are not in the prompt; the guest fetches them with public_notes_lookup, and their raw text is listed below.</p><pre>${esc(lines.join('\n'))}</pre>`+
     (docs.length?`<h4>DOCUMENT BODIES THE GUEST CAN FETCH · ${mine.length?`${mine.length} FROM ${esc(cb.name).toUpperCase()} SHOWN`:'FIRST 20 SHOWN'}</h4>`+(mine.length?mine:docs.slice(0,20)).map(d=>`<pre class="doc">### ${esc(d.title||'')}\n${esc(d.text||'')}</pre>`).join(''):'');}
 // disclosure policy: the owner's own words about what may cross; the server feeds it to every draft
-$('#pol-open').onclick=async()=>{try{const j=await (await fetch('/api/board/policy')).json();$('#pol-text').value=j.text;$('#pol-path').textContent=j.path;}catch{$('#pol-text').value='(demo: not available)';}$('#pol').classList.add('show');};
+const openPol=async()=>{try{const j=await (await fetch('/api/board/policy')).json();$('#pol-text').value=j.text;$('#pol-path').textContent=j.path;}catch{$('#pol-text').value='(demo: not available)';}$('#pol').classList.add('show');};
 $('#pol-close').onclick=()=>$('#pol').classList.remove('show');
 $('#pol-save').onclick=async()=>{const r=await fetch('/api/board/policy',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('#pol-text').value})});toast(r.ok?'Policy saved; the next draft follows it':'Save failed');if(r.ok)$('#pol').classList.remove('show');};
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&$('#pol').classList.contains('show'))$('#pol').classList.remove('show');});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')['#pol','#rul'].forEach(k=>$(k).classList.remove('show'));});
+$('#pol-rw').onclick=async()=>{const ins=$('#pol-ask').value.trim();if(!ins)return toast('Write what to change first');if(demo)return toast('Demo data');const b=$('#pol-rw');b.disabled=true;b.textContent='Rewriting…';try{const r=await fetch('/api/board/policy/rewrite',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('#pol-text').value,instruction:ins})});const j=await r.json();if(!r.ok)throw new Error(j.detail||r.status);$('#pol-text').value=j.text;$('#pol-ask').value='';toast('Rewritten · read it, then Save policy');}catch(err){toast('Rewrite failed: '+err.message);}finally{b.disabled=false;b.textContent='Rewrite with Hermes';}};
+// privacy rules: the owner's own regular expressions, layered over the built-in ones
+const openRules=async()=>{$('#rul-err').textContent='';try{const j=await (await fetch('/api/board/rules')).json();$('#rul-text').value=j.text;$('#rul-path').textContent=j.path;$('#rul-n').textContent=j.builtin.length;$('#rul-list').innerHTML=j.builtin.map(r=>`<div class="r"><b>${esc(r.name)}</b><i>${esc(r.tier)}</i><div>${esc(r.description)}${r.patterns.map(p=>`<code>${esc(p)}</code>`).join('')}</div></div>`).join('');}catch{$('#rul-text').value='(demo: not available)';}$('#rul').classList.add('show');};
+$('#rul-close').onclick=()=>$('#rul').classList.remove('show');
+$('#rul-save').onclick=async()=>{const r=await fetch('/api/board/rules',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:$('#rul-text').value})});let j={};try{j=await r.json();}catch{}if(!r.ok){$('#rul-err').textContent=j.detail||'Save failed';return;}$('#rul-err').textContent='';toast(`Rules saved · ${j.rules} of your own · run Classify again to apply`);$('#rul').classList.remove('show');};
 // ---------- triage: rules, then Hermes, sort every entry into A/B/C; the owner still clicks every entry over
 const TIER_TXT={A:'A · AS-IS',B:'B · REWRITE',C:'C · PRIVATE'};
 function tierHTML(it){const c=cls[it.id];if(!c)return '';const rh=c.rules_hit||[];const v=via[it.id]||it.decided_via;
   return `<span class="tier t${c.tier}" title="${esc((c.reason||'')+(v?' · '+v:''))}"><b>${TIER_TXT[c.tier]}</b></span>`+rh.map(r=>`<span class="tag" title="${esc((rulesInfo[r]||{}).description||r)}">${esc(r.replace(/_/g,' '))}</span>`).join('');}
 function tierCounts(){const n={A:0,B:0,C:0};for(const it of items){const c=cls[it.id];if(c)n[c.tier]++;}return n;}
 function drawTriage(){const t=$('#triage');if(!t)return;const n=tierCounts(),done=Object.keys(cls).length,dirty=snapshot()!==initial||Object.keys(via).length>0;
-  t.innerHTML=`<div class="tl"><span class="lbl">TRIAGE · RULES FIRST, THEN HERMES · NOTHING CROSSES WITHOUT YOUR CLICK</span><span class="lbl">${done?`${n.A} A · ${n.B} B · ${n.C} C`:'NOT CLASSIFIED YET'}</span></div>`+
-  `<div class="tb"><button class="act" id="t-run">${done?'Classify again':'Classify'}</button><button class="act" data-bulk="A" ${n.A?'':'disabled'}>A · adopt all ${n.A} as-is</button><button class="act" data-bulk="B" ${n.B?'':'disabled'}>B · draft guest versions for all ${n.B}</button><button class="act" data-bulk="C" ${n.C?'':'disabled'}>C · keep all ${n.C} private</button><button class="act" id="t-undo" ${dirty?'':'disabled'} title="drop the changes you have not saved">Discard changes</button><button class="act primary" id="t-save" ${dirty?'':'disabled'}>Save &amp; sync</button></div>`+
+  t.innerHTML=`<div class="tl"><span class="lbl"></span><span class="lbl">${done?`${n.A} A · ${n.B} B · ${n.C} C`:'NOT CLASSIFIED YET'}</span></div>`+
+  `<div class="tb"><button class="act primary" id="t-run">${done?'Classify again':'Classify'}</button><button class="act" data-bulk="A" ${n.A?'':'disabled'}>A · adopt all ${n.A} as-is</button><button class="act" data-bulk="B" ${n.B?'':'disabled'}>B · draft guest versions for all ${n.B}</button><button class="act" data-bulk="C" ${n.C?'':'disabled'}>C · keep all ${n.C} private</button><button class="act primary" id="t-undo" ${dirty?'':'disabled'} title="drop the changes you have not saved">Discard changes</button><button class="act primary" id="t-save" ${dirty?'':'disabled'}>Save &amp; sync</button><button class="act primary" id="t-rules">Privacy rules · edit</button><button class="act primary" id="t-pol">What may be shared · edit</button></div>`+
   `<div class="legend"><div class="tier tA"><b>A · AS-IS</b>Nothing personal: text she already published, or a pure method (rules, checklists, thresholds). Can cross unchanged.</div><div class="tier tB"><b>B · REWRITE</b>A shareable core wrapped in personal detail: where she lives, her job, pets, routines, opinions about private people. Crosses only as a guest version written in general terms.</div><div class="tier tC"><b>C · PRIVATE</b>Credentials, accounts, wallets, addresses, phone or email, health, names of family, partners or doctors, anything she marked private. Never crosses.</div></div>`+
-  (combo&&combo.hit?`<div class="warn">${esc(combo.message)} · ${combo.ids.length} entries marked B</div>`:'')+
-  `<div class="tnote">A crosses unchanged, B crosses only as a guest version, C stays here. A bulk button only ever takes entries of its own tier; C never crosses in bulk. Every entry stays editable one by one, and every click is written to the approval log.</div>`;}
+  (combo&&combo.hit?`<div class="warn">${esc(combo.message)} · ${combo.ids.length} entries marked B</div>`:'');}
 async function runClassify(rulesOnly){const b=$('#t-run');if(b&&!rulesOnly){b.disabled=true;b.textContent='Classifying…';}const t0=Date.now();
   try{const r=await fetch('/api/board/classify',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rules_only:rulesOnly===true})});if(!r.ok)throw new Error(r.status);const j=await r.json();rulesInfo=j.rules||{};
     cls={};for(const [id,c] of Object.entries(j.items||{}))cls[id]=c;
@@ -464,6 +468,8 @@ async function runClassify(rulesOnly){const b=$('#t-run');if(b&&!rulesOnly){b.di
   catch(err){toast('Classify failed: '+err.message);}
   drawTriage();if(open)renderList();}
 document.addEventListener('click',async e=>{const t=e.target;
+  if(t.id==='t-pol'){openPol();return;}
+  if(t.id==='t-rules'){openRules();return;}
   if(t.id==='t-run'){if(demo)return toast('Demo data');if(!await confirmRun('classify'))return;runClassify();return;}
   if(t.id==='t-save'){saveAll();return;}
   if(t.id==='t-undo'){discard();return;}

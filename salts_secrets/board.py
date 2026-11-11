@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 
 from . import _yaml as yaml
-from . import classify, gate, tiers
+from . import classify, gate, privacy, tiers
 from . import context as ctx
 from .home import data_dir
 
@@ -58,12 +58,96 @@ def policy_text(owner_home: Path, default: str = DEFAULT_POLICY) -> str:
 
 
 def policy_body(owner_home: Path, default: str = DEFAULT_POLICY) -> dict:
-    return {"text": policy_text(owner_home, default), "path": str((data_dir(owner_home) / POLICY_FILE).resolve())}
+    return {"text": policy_text(owner_home, default), "path": ctx.display_path((data_dir(owner_home) / POLICY_FILE).resolve())}
 
 
 def save_policy(owner_home: Path, text: str) -> None:
     data_dir(owner_home).mkdir(parents=True, exist_ok=True)
     (data_dir(owner_home) / POLICY_FILE).write_text(text.strip() + "\n", encoding="utf-8")
+
+
+async def rewrite_policy(text: str, instruction: str) -> str:
+    """The owner's model applies one plain-language instruction to the disclosure policy. Nothing is saved here."""
+    system = ("You edit the disclosure policy of a private assistant: a short markdown file with two lists, what is "
+              "fine to share about the owner and what must never be shared. Apply the owner's instruction and change "
+              "nothing else. Keep the headings and the bullet style. Reply with the full revised file only, no "
+              "commentary and no code fences.")
+    user = f"CURRENT POLICY:\n{text[:12000]}\n\nINSTRUCTION:\n{instruction[:2000]}"
+    try:
+        result = await classify.host_llm().acomplete(
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            temperature=0.2, max_tokens=2000, purpose="salts-secrets.policy",
+        )
+    except Exception as exc:
+        raise DraftError(f"model call failed: {type(exc).__name__}") from exc
+    out = re.sub(r"^```[a-z]*\n|\n```$", "", (result.text or "").strip())
+    if not out:
+        raise DraftError("model returned an empty policy")
+    return out
+
+
+RULES_TEMPLATE = """# Your own privacy rules. Checked before Hermes on every Classify; a hit sets the lowest tier (B or C).
+# Patterns are Python regular expressions, matched case-insensitively. Built-in rules stay on.
+dictionary:
+  real_names: []   # your real name, surname, other legal names
+  family: []       # partner, parents, siblings, children, pets
+  places: []       # home town, neighbourhood, city you live in
+rules: []
+# Example:
+# rules:
+#   - name: my_father
+#     tier: C
+#     description: Anything about my father.
+#     patterns:
+#       - '\\b(?:my )?(?:dad|father)\\b'
+#       - '父亲|爸爸'
+#     examples:
+#       hit: ["Dad died this morning"]
+#       miss: ["the data feed"]
+"""
+
+
+def rules_body(owner_home: Path) -> dict:
+    path = data_dir(owner_home) / privacy.LOCAL_RULES_FILE
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        text = RULES_TEMPLATE
+    builtin = [{"name": str(r.get("name")), "tier": r.get("tier"), "description": str(r.get("description") or ""),
+                "patterns": [str(p) for p in r.get("patterns") or []]}
+               for r in privacy._read(privacy.RULES_FILE).get("rules") or []]
+    return {"text": text, "path": ctx.display_path(path.resolve()), "builtin": builtin}
+
+
+def save_rules(owner_home: Path, text: str) -> dict:
+    """Validate the owner's rules file (YAML, tiers, regular expressions, examples), then write it."""
+    try:
+        data = yaml.safe_load(text) or {}
+    except Exception as exc:
+        raise ValueError(f"not valid YAML: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError("the file must be a mapping with `dictionary` and/or `rules`")
+    raw_rules = data.get("rules") or []
+    if not isinstance(raw_rules, list) or not all(isinstance(r, dict) and r.get("name") for r in raw_rules):
+        raise ValueError("`rules` must be a list of rules, each with a name")
+    try:
+        privacy.load_rules(extra=data)
+    except re.error as exc:
+        raise ValueError(f"bad regular expression: {exc}") from exc
+    except (KeyError, TypeError, AttributeError) as exc:
+        raise ValueError(f"malformed rule: {exc}") from exc
+    for raw in raw_rules:
+        pats = [privacy._compile(p) for p in raw.get("patterns") or []]
+        ex = raw.get("examples") or {}
+        for h in ex.get("hit") or []:
+            if isinstance(h, str) and not any(p.search(h) for p in pats):
+                raise ValueError(f"rule {raw['name']}: example {h!r} should hit but does not")
+        for m in ex.get("miss") or []:
+            if isinstance(m, str) and any(p.search(m) for p in pats):
+                raise ValueError(f"rule {raw['name']}: example {m!r} should miss but hits")
+    data_dir(owner_home).mkdir(parents=True, exist_ok=True)
+    (data_dir(owner_home) / privacy.LOCAL_RULES_FILE).write_text(text.rstrip() + "\n", encoding="utf-8")
+    return {"rules": len(raw_rules)}
 
 
 def _draft_system(kind: str, public_name: str, policy: str) -> str:
@@ -173,9 +257,9 @@ def perm_state(owner_home: Path, homes: dict[str, Path], profiles: dict[str, str
         "catalog": [{"id": k, "tools": list(v[0]), "category": v[1], "label": v[2], "locked": v[3], "warn": v[4]}
                     for k, v in tiers.CATALOG.items()],
         "members": [tiers.public_member(m) for m in policy["members"]],
-        "profiles": {t: {"name": profiles[t], "home": str(homes[t].resolve()), "deployed": deployed.get(t, False)}
+        "profiles": {t: {"name": profiles[t], "home": ctx.display_path(homes[t].resolve()), "deployed": deployed.get(t, False)}
                      for t in tiers.CONFIGURABLE},
-        "policy_file": str((owner_home / tiers.POLICY_FILE).resolve()),
+        "policy_file": ctx.display_path((owner_home / tiers.POLICY_FILE).resolve()),
         "planned": planned_tiers(deployed),
     }
 

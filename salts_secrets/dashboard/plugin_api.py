@@ -155,6 +155,27 @@ def policy_set(body: dict = Body(...)):
     return {"ok": True}
 
 
+@router.post("/board/policy/rewrite")
+async def policy_rewrite(body: dict = Body(...)):
+    try:
+        return {"text": await board.rewrite_policy(str(body.get("text") or ""), str(body.get("instruction") or ""))}
+    except board.DraftError as exc:
+        raise HTTPException(502, str(exc))
+
+
+@router.get("/board/rules")
+def rules_get():
+    return board.rules_body(home.current())
+
+
+@router.post("/board/rules")
+def rules_set(body: dict = Body(...)):
+    try:
+        return {"ok": True, **board.save_rules(home.current(), str(body.get("text") or ""))}
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
+
 @router.post("/board/draft")
 async def board_draft(body: dict = Body(...)):
     """Guest version of one item from the owner's model. Nothing is published here."""

@@ -89,3 +89,15 @@ def test_mode_600_from_the_real_file(tmp_path):
     assert "owner_only_file" in privacy.screen({"path": str(f), "text": "plain"}, RULES)["rules_hit"]
     f.chmod(0o644)
     assert "owner_only_file" not in privacy.screen({"path": str(f), "text": "plain"}, RULES)["rules_hit"]
+
+
+def test_owner_rules_from_the_board_are_validated_then_applied(tmp_path):
+    from salts_secrets import board
+
+    assert board.save_rules(tmp_path, board.rules_body(tmp_path)["text"]) == {"rules": 0}
+    for bad in ("rules: [{name: x, tier: C, patterns: ['(']}]", "rules: [{name: x, tier: A, patterns: ['a']}]",
+                "rules: [{name: x, tier: C, patterns: ['dad'], examples: {hit: ['mom']}}]", "rules: : :"):
+        with pytest.raises(ValueError):
+            board.save_rules(tmp_path, bad)
+    board.save_rules(tmp_path, "rules: [{name: my_father, tier: C, patterns: ['\\bdad\\b'], examples: {hit: ['Dad died'], miss: ['data']}}]")
+    assert "my_father" in privacy.screen({"text": "Dad died", "title": ""}, privacy.load_rules(tmp_path))["rules_hit"]
