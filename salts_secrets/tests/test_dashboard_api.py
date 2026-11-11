@@ -142,3 +142,16 @@ def test_doc_facts_describe_this_install(client):
     http, _, _ = client
     body = http.get("/api/plugins/salts-secrets/doc").json()
     assert body["facts"] == 0 and body["viewer"] is False and "BROKEN" in body["isolation"]
+
+
+def test_owner_label_names_the_owner_on_the_tab_without_reaching_guests(client):
+    http, owner, public = client
+    cfg = owner / "config.yaml"
+    cfg.write_text(cfg.read_text(encoding="utf-8") + "        owner_label: Lena\n        public_name: Salt\n", encoding="utf-8")
+    html = http.get("/api/plugins/salts-secrets/page/shelf").json()["html"]
+    assert "Lena's Hermes" in html and "Salt's assistant" in html and "Ada's Hermes" not in html
+    items = http.get("/api/plugins/salts-secrets/board/items").json()["items"]
+    ok = next(i for i in items if i["title"].startswith("writes a newsletter"))
+    http.post("/api/plugins/salts-secrets/board/save", json={"public_ids": [ok["id"]]})
+    projection = (data_dir(public) / "public_context.json").read_text(encoding="utf-8")
+    assert '"owner_name": "Ada"' in projection and "Lena" not in projection
