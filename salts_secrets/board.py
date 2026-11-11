@@ -192,7 +192,7 @@ async def draft(owner_home: Path, item: ctx.Item, public_name: str, force: bool 
     try:
         result = await classify.host_llm().acomplete(
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
-            temperature=0.2, max_tokens=2000 if item.kind == "skill" else 800, purpose="salts-secrets.draft",
+            temperature=0.2, max_tokens=6000 if item.kind == "skill" else 4000, purpose="salts-secrets.draft",
         )
     except Exception as exc:
         raise DraftError(f"model call failed: {type(exc).__name__}") from exc
